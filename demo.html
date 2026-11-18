@@ -1,0 +1,2384 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<title>Doomlet</title>
+<style>
+  html, body { margin: 0; background: #d9e0ea !important; height: 100%; overflow: hidden; background: transparent; user-select: none; font-family: -apple-system, "Segoe UI", Roboto, sans-serif, "Segoe UI Emoji", "Apple Color Emoji", "Noto Color Emoji"; }
+  .emote { position: absolute; bottom: calc(100% - 22px); left: 50%; font-size: 26px; line-height: 1; transform: translateX(-50%) scale(0); opacity: 0;
+    pointer-events: none; white-space: nowrap; filter: drop-shadow(0 2px 0 #2a2a3355); font-family: "Segoe UI Emoji", "Apple Color Emoji", "Noto Color Emoji", sans-serif; }
+  .emote.pop { animation: emote 2.2s ease-out forwards; }
+  .pet.talking .emote { display: none; }
+  @keyframes emote { 0% { transform: translateX(-50%) translateY(10px) scale(0); opacity: 0; } 12% { transform: translateX(-50%) translateY(-6px) scale(1.25); opacity: 1; }
+    22% { transform: translateX(-50%) translateY(0) scale(1); } 80% { opacity: 1; transform: translateX(-50%) translateY(-10px) scale(1); } 100% { opacity: 0; transform: translateX(-50%) translateY(-22px) scale(.9); } }
+  #world { position: fixed; inset: 0; pointer-events: none; }
+  .pet { position: absolute; left: 0; top: 0; will-change: transform; }
+  .spr { pointer-events: auto; cursor: grab; transform-origin: 50% 92%; }
+  .pet.dragging .spr { cursor: grabbing; }
+  .spr canvas { display: block; image-rendering: pixelated; image-rendering: crisp-edges; }
+  .pet.left canvas { transform: scaleX(-1); }
+
+  .bubble { position: absolute; bottom: calc(100% - 14px); left: 50%; transform: translateX(-50%) scale(.8); opacity: 0;
+    background: #fffdf8; color: #2a2a33; font-size: 12.5px; line-height: 1.35; padding: 6px 9px; border-radius: 10px;
+    border: 2px solid #2a2a33; white-space: normal; width: max-content; max-width: 190px; text-align: center; transition: opacity .15s, transform .15s; pointer-events: none;
+    box-shadow: 2px 2px 0 #2a2a33; }
+  .bubble::after { content: ''; position: absolute; left: 50%; top: 100%; margin-left: -5px; border: 5px solid transparent; border-top-color: #2a2a33; }
+  .pet.talking .bubble { opacity: 1; transform: translateX(-50%) scale(1); }
+  .pet.helper .bubble { font-size: 11.5px; }
+  .tag { position: absolute; top: calc(100% - 6px); left: 50%; transform: translateX(-50%); font-size: 10.5px; color: #fff;
+    background: #2a2a33cc; padding: 1px 6px; border-radius: 6px; white-space: nowrap; opacity: 0; transition: opacity .2s; pointer-events: none; }
+  .pet.has-tag .tag { opacity: .85; }
+  .pet:hover .tag { opacity: 1; }
+
+  /* chuyển động thân */
+  .an-breathe .spr { animation: breathe 2.8s ease-in-out infinite; }
+  .an-hop .spr { animation: hop .32s ease-in-out infinite; }
+  .an-sad .spr { animation: breathe 4s ease-in-out infinite; filter: saturate(.6); }
+  .an-sleep .spr { animation: breathe 3.6s ease-in-out infinite; }
+  .an-dance .spr { animation: dance .45s ease-in-out infinite; }
+  .an-flip .spr { animation: flip .9s ease-in-out 1; }
+  .an-spin .spr { animation: spin .5s linear infinite; }
+  .an-sob .spr { animation: sob .3s ease-in-out infinite; }
+  .an-rage .spr { animation: shake .08s linear infinite; }
+  .an-melt .spr { animation: melt 1.4s ease-in forwards; }
+  .an-shrink .spr { transform: scale(.82); filter: grayscale(.4); transition: transform .5s; }
+  .an-rofl .spr { animation: rofl .5s ease-in-out infinite; }
+  .an-faint .spr { animation: faint .45s ease-in forwards; }
+  .an-headbang .spr { animation: headbang .25s ease-in-out infinite; }
+  .an-stretch .spr { animation: stretch 1.1s ease-in-out infinite; }
+  .an-pancake .spr { animation: pancake .25s ease-out forwards; }
+  .an-wiggle .spr { animation: wiggle .25s ease-in-out infinite; }
+  .an-jump .spr { animation: jump .55s ease-out infinite; }
+  .an-bounce .spr { animation: hop .6s ease-in-out infinite; }
+  .an-squash .spr { animation: squash .35s ease-out 1; }
+  .an-dangle .spr { animation: dangle .5s ease-in-out infinite; transform-origin: 50% 30%; }
+  .an-windup .spr { animation: windup .65s ease-in forwards; }
+  .an-leap .spr { animation: leapspin .7s linear infinite; }
+  .dust { position: absolute; background: #c9c3b6; border-radius: 1px; pointer-events: none; image-rendering: pixelated;
+    animation: dust .65s ease-out forwards; }
+  .trail { position: absolute; width: 12px; height: 12px; background: #ffffffaa; border: 2px solid #2a2a3355; pointer-events: none;
+    animation: trail .45s ease-out forwards; }
+  @keyframes windup { 0% { transform: scale(1,1); } 70% { transform: scale(1.25,.7) translateY(4px); } 100% { transform: scale(1.3,.65) translateY(5px); } }
+  @keyframes leapspin { 0% { transform: rotate(0) scale(.95,1.1); } 100% { transform: rotate(360deg) scale(.95,1.1); } }
+  @keyframes dust { to { transform: translate(var(--dx), var(--dy)) scale(.3); opacity: 0; } }
+  @keyframes trail { to { transform: scale(.2) rotate(45deg); opacity: 0; } }
+  .an-fall .spr { animation: dangle .4s ease-in-out infinite; transform-origin: 50% 30%; }
+
+  .an-argue .spr { animation: argue .35s ease-in-out infinite; }
+  .an-hidden .spr { opacity: 0; }
+  .an-lunge .spr { animation: lunge .4s ease-out 1; }
+  .an-recoil .spr { animation: recoil .25s ease-out 1; }
+  .an-preach .spr { animation: preach 1.6s ease-in-out infinite; }
+  .an-float .spr { animation: float 2.4s ease-in-out infinite; }
+  .pet.bump .spr { animation: squash .3s ease-out 1; }
+  @keyframes argue { 0%,100% { transform: translateY(0) rotate(-3deg); } 50% { transform: translateY(-3px) rotate(3deg) scale(1.05); } }
+  @keyframes lunge { 0% { transform: translateX(0); } 40% { transform: translateX(18px) rotate(8deg); } 100% { transform: translateX(0); } }
+  .pet.left.an-lunge .spr { animation-name: lungeL; }
+  @keyframes lungeL { 0% { transform: translateX(0); } 40% { transform: translateX(-18px) rotate(-8deg); } 100% { transform: translateX(0); } }
+  @keyframes recoil { 0% { transform: translateX(0); } 30% { transform: translateX(-6px) rotate(-6deg); } 100% { transform: translateX(0); } }
+  @keyframes preach { 0%,100% { transform: rotate(-3deg); } 50% { transform: rotate(3deg) translateY(-2px); } }
+  @keyframes float { 0%,100% { transform: translateY(0); } 50% { transform: translateY(-12px); } }
+
+  .brawl { position: absolute; width: 0; height: 0; pointer-events: none; animation: jitter .12s linear infinite; z-index: 3; }
+  .brawl .puff { position: absolute; background: #e8e4da; border: 3px solid #2a2a33; border-radius: 40%; animation: puff .35s ease-in-out infinite alternate; }
+  .brawl .pow { position: absolute; font: 900 18px/1 Impact, "Arial Black", sans-serif; color: #e05252; -webkit-text-stroke: 1.5px #2a2a33;
+    transform: rotate(var(--r)) scale(.4); animation: pow .65s ease-out forwards; white-space: nowrap; z-index: 2; }
+  .brawl .limb { position: absolute; width: 12px; height: 12px; border: 2px solid #2a2a33; animation: limb .3s ease-out forwards; }
+  @keyframes jitter { 0% { transform: translate(-3px,0); } 50% { transform: translate(3px,-2px); } 100% { transform: translate(-2px,1px); } }
+  @keyframes puff { from { transform: scale(.9); } to { transform: scale(1.12); } }
+  @keyframes pow { 0% { transform: rotate(var(--r)) scale(.4); opacity: 1; } 30% { transform: rotate(var(--r)) scale(1.3); } 100% { transform: rotate(var(--r)) scale(1) translateY(-14px); opacity: 0; } }
+  @keyframes limb { 0% { transform: translateX(0); } 50% { transform: translateX(var(--dx)); } 100% { transform: translateX(0) scale(.4); opacity: 0; } }
+
+  .clash { position: absolute; width: 0; height: 0; pointer-events: none; z-index: 50; }
+  .clash span { position: absolute; transform: translate(-50%,-140%); font: 900 16px/1 Impact, "Arial Black", sans-serif; color: #ffd34d;
+    -webkit-text-stroke: 1.5px #2a2a33; white-space: nowrap; animation: pow .5s ease-out forwards; --r: -8deg; }
+  .clash.big span { font-size: 24px; }
+  .clash i { position: absolute; width: 5px; height: 5px; background: #ffd34d; box-shadow: 0 0 0 1px #2a2a33; animation: spark .45s ease-out forwards; }
+  @keyframes spark { to { transform: translate(var(--dx), var(--dy)); opacity: 0; } }
+  .bullet { position: absolute; width: 12px; height: 5px; background: #ff8a3d; border: 2px solid #2a2a33; border-radius: 3px; pointer-events: none; z-index: 50;
+    box-shadow: -10px 0 0 -1px #ffd34d88; }
+  .flysword { position: absolute; width: 30px; height: 4px; background: #d8dde6; border: 2px solid #2a2a33; pointer-events: none;
+    animation: flysword 1.1s cubic-bezier(.3,.6,.6,1) forwards; }
+  @keyframes flysword { 0% { transform: translate(0,0) rotate(0); } 50% { transform: translate(calc(var(--dx) * .5), -120px) rotate(540deg); } 100% { transform: translate(var(--dx), 40px) rotate(1000deg); opacity: 0; } }
+  .tumbleweed { position: absolute; left: 0; width: 22px; height: 22px; border: 3px dotted #a07a4a; border-radius: 50%; pointer-events: none;
+    animation: tumble 4s linear forwards; }
+  @keyframes tumble { 0% { transform: translateX(var(--from)) rotate(0) translateY(0); } 25% { transform: translateX(calc(var(--from) + (var(--to) - var(--from)) * .25)) rotate(360deg) translateY(-10px); }
+    50% { transform: translateX(calc(var(--from) + (var(--to) - var(--from)) * .5)) rotate(720deg); } 100% { transform: translateX(var(--to)) rotate(1440deg); } }
+  #ropes { position: fixed; inset: 0; width: 100%; height: 100%; pointer-events: none; overflow: visible; }
+  #ropes .rope { stroke: #eef2f6; stroke-width: 3; stroke-linecap: round; filter: drop-shadow(0 0 1px #2a2a33) drop-shadow(0 0 1px #2a2a33); }
+  .grow { transform-origin: 50% 92%; transition: transform .45s cubic-bezier(.3,1.6,.5,1); }
+  .pet.giant .grow { transform: scale(2.6); }
+  .pet.giant { z-index: 5; }
+  .pet.giant .bubble, .pet.giant .emote { bottom: calc(100% + 70px); }
+  .an-giant .spr { animation: shake .09s linear infinite; }
+  .an-stomp .spr { animation: stomp .5s ease-in-out infinite; }
+  @keyframes stomp { 0%,100% { transform: translateY(0) rotate(-4deg); } 50% { transform: translateY(-6px) rotate(4deg); } }
+  .smoke { position: absolute; width: 10px; height: 10px; background: #d9d9de; border: 2px solid #2a2a3333; border-radius: 3px; pointer-events: none;
+    animation: smoke .7s ease-out forwards; }
+  @keyframes smoke { to { transform: translateY(18px) scale(2.2); opacity: 0; } }
+  .bread { position: absolute; left: 0; top: 0; font-size: 24px; pointer-events: none; z-index: 60; font-family: "Segoe UI Emoji", "Apple Color Emoji", "Noto Color Emoji", sans-serif; }
+  body.quake #world { animation: quake .35s linear 1; }
+  @keyframes quake { 0%,100% { transform: translate(0,0); } 20% { transform: translate(-5px,3px); } 40% { transform: translate(5px,-3px); } 60% { transform: translate(-4px,2px); } 80% { transform: translate(3px,-2px); } }
+  @keyframes breathe { 0%,100% { transform: scale(1,1); } 50% { transform: scale(1.02,.97); } }
+  @keyframes hop { 0%,100% { transform: translateY(0) scale(1.03,.97); } 50% { transform: translateY(-9px) scale(.97,1.04); } }
+  @keyframes dance { 0%,100% { transform: rotate(-10deg) translateY(0); } 50% { transform: rotate(10deg) translateY(-6px); } }
+  @keyframes flip { 0% { transform: translateY(0) rotate(0); } 50% { transform: translateY(-50px) rotate(180deg); } 100% { transform: translateY(0) rotate(360deg); } }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  @keyframes sob { 0%,100% { transform: translateY(0); } 50% { transform: translateY(2px) scale(1.02,.98); } }
+  @keyframes shake { 0% { transform: translate(-2px,0) scale(1.08); } 50% { transform: translate(2px,-1px) scale(1.1); } 100% { transform: translate(-2px,1px) scale(1.08); } }
+  @keyframes melt { to { transform: scale(1.35,.45); filter: saturate(.7); } }
+  @keyframes rofl { 0% { transform: rotate(80deg) translateX(0); } 50% { transform: rotate(100deg) translateX(-4px); } 100% { transform: rotate(80deg) translateX(0); } }
+  @keyframes faint { 0% { transform: rotate(0); } 60% { transform: rotate(-100deg); } 80% { transform: rotate(-85deg); } 100% { transform: rotate(-90deg); } }
+  @keyframes headbang { 0%,100% { transform: rotate(0); } 50% { transform: rotate(28deg) translateY(4px); } }
+  @keyframes stretch { 0%,100% { transform: scale(1,1); } 50% { transform: scale(.88,1.18); } }
+  @keyframes pancake { to { transform: scale(1.4,.35); } }
+  @keyframes wiggle { 0%,100% { transform: rotate(-6deg); } 50% { transform: rotate(6deg); } }
+  @keyframes jump { 0%,100% { transform: translateY(0); } 40% { transform: translateY(-22px); } }
+  @keyframes squash { 0% { transform: scale(1.25,.75); } 60% { transform: scale(.92,1.1); } 100% { transform: scale(1,1); } }
+  @keyframes dangle { 0%,100% { transform: rotate(-12deg); } 50% { transform: rotate(12deg); } }
+
+  #menu { position: fixed; display: none; background: #fffdf8; border: 2px solid #2a2a33; border-radius: 10px; box-shadow: 3px 3px 0 #2a2a33;
+    padding: 6px; width: 380px; pointer-events: auto; z-index: 10; column-count: 2; column-gap: 4px; }
+  #menu .mh { font-size: 11px; color: #777; padding: 2px 6px 4px; column-span: all; }
+  #menu button { display: block; width: 100%; text-align: left; border: 0; background: none; padding: 4px 8px; font-size: 12.5px;
+    border-radius: 6px; cursor: pointer; color: #2a2a33; font-family: inherit; break-inside: avoid; }
+  #menu button:hover { background: #2a2a3314; }
+  #menu hr { border: 0; border-top: 1px solid #ddd; margin: 4px 0; column-span: all; }
+
+  #panel { position: fixed; left: 12px; top: 12px; display: none; gap: 6px; flex-wrap: wrap; pointer-events: auto; z-index: 5; }
+  #panel button { font: inherit; font-size: 12.5px; padding: 6px 10px; border: 2px solid #2a2a33; border-radius: 8px; background: #fffdf8;
+    box-shadow: 2px 2px 0 #2a2a33; cursor: pointer; color: #2a2a33; }
+  #panel button:active { transform: translate(1px,1px); box-shadow: 1px 1px 0 #2a2a33; }
+  #panel .hint { width: 100%; font-size: 11.5px; color: #666; }
+</style>
+</head>
+<body>
+<div id="world"></div>
+<div id="menu"></div>
+<div id="panel">
+  <button data-a="spawn">+ Gọi thêm 1 đứa</button>
+  <button data-a="team">Gọi cả team</button>
+  <button data-a="heroes">Gọi 3 siêu anh hùng</button>
+  <button data-a="session">Giả lập 1 session Claude</button>
+  <button data-a="travel">Nhảy sang màn khác</button>
+  <button data-a="dismiss">Giải tán</button>
+  <div class="hint">Chọc = click · kéo thả để ném · double-click = trò hề · chuột phải = menu đầy đủ</div>
+</div>
+<script>
+// Câu thoại của team thỏ. {tool} {project} {name} {other} sẽ được thay bằng dữ liệu thật.
+const LINES = {
+  idle: [
+    'ừ.', 'lại một ngày nữa.', 'tui ổn. chắc vậy.', 'deadline chỉ là một khái niệm xã hội.',
+    'hôm nay cũng chẳng có gì. như mọi hôm.', 'nghĩ lại thì… thôi khỏi nghĩ.',
+    'sống chậm lại. chậm tới mức đứng im luôn.', 'tui không lười. tui đang tiết kiệm pin.',
+    'mọi thứ đều ổn. (không ổn)', 'đang chờ thứ Sáu. hôm nay mới thứ Hai.',
+    'tui có 47 tab đang mở. tâm hồn cũng vậy.', 'mơ ước lớn nhất: inbox 0.',
+    'nếu không ai thấy tui làm thì có tính là tui làm không?', 'tui đang ở chế độ máy bay. tinh thần.',
+    'cuộc đời là một cái PR chưa ai review.', 'tui không trì hoãn. tui đang ủ ý tưởng.',
+    'hôm qua tui hứa mai làm. hôm nay là mai của hôm qua. ờ.', 'thở ra. hít vào. quên mất bước tiếp theo.',
+    'có ai thấy động lực của tui đâu không?', 'tui là thỏ. nhưng không nhanh.',
+    'tai tui gập vì nghe quá nhiều yêu cầu thay đổi.', 'quầng thâm này là huy chương.',
+    'đang chạy trên 2% pin cảm xúc.', 'tui hứa với bản thân sẽ ngủ sớm. tui nói dối giỏi ghê.',
+  ],
+  walk: ['đi đâu cũng vậy thôi.', 'đi dạo cho có.', 'bước một bước… thôi đủ rồi.', 'đi tìm ý nghĩa. chưa thấy.',
+    'đi cho đủ 10.000 bước. còn 9.990.', 'tui đi tuần tra. không có gì đáng tuần tra.', 'đi lấy nước. rồi quên lấy nước.'],
+  sigh: ['haizzz.', 'mưa trong lòng, nắng ngoài trời.', 'cái mây này đi theo tui cả tuần rồi.', 'thở dài lần thứ 47 trong ngày.',
+    'tui mang theo mây riêng. tiện ghê.', 'dự báo: buồn rải rác, có lúc buồn to.', 'mây ơi đi chỗ khác đi. nó không nghe.'],
+  coffee: ['ly thứ năm. tim đập nhịp 4/4.', 'cà phê là chất lỏng duy nhất hiểu tui.', 'không đường. như cuộc đời.', 'cafein đang chạy. não thì chưa.',
+    'máu tui giờ 60% là cà phê.', 'uống để tỉnh. tỉnh để uống tiếp.', 'cà phê nguội rồi. như nhiệt huyết.', 'ly này là ly cuối. (lần thứ 3 nói vậy)'],
+  void: ['nhìn vào hư vô… hư vô seen không rep.', '…', 'tui đang suy nghĩ. về không gì cả.', 'nếu một con bug crash mà không ai thấy thì nó có crash không?',
+    'mình là ai. mình đang ở sprint nào.', 'nhìn chằm chằm vào màn hình. màn hình nhìn lại.', 'hư vô nói nó cũng mệt.'],
+  dance: ['đang nhảy. đừng nhìn.', 'niềm vui bắt buộc.', 'team building tinh thần.', 'đây là điệu nhảy của sự cam chịu.',
+    'nhảy cho quên việc. chưa quên.', 'lắc lư theo nhịp quạt tản nhiệt.', 'bài này tên là "build xanh lần đầu".'],
+  scroll: ['lướt tin. tin xấu. lướt tiếp.', 'thêm một video nữa thôi. (video thứ 80)', 'thị trường đỏ. code cũng đỏ.', 'ai cũng đang thành công trừ tui.',
+    'người ta đi du lịch. tui đi debug.', 'đọc tin "AI thay thế lập trình viên". lướt tiếp.', 'xem người khác nấu ăn. tui ăn mì.'],
+  sleep: ['zzz… deadline… zzz', 'zzz… merge conflict… zzz', 'đừng gọi. đang offline tâm hồn.', 'zzz… "chỉ sửa một dòng thôi"… zzz', 'zzz… npm install… zzz'],
+  flip: ['lộn một vòng. đời vẫn vậy.', 'ta-da. (không ai vỗ tay)', 'cú lộn của sự tuyệt vọng.', 'thể dục giữa giờ.'],
+  cry: ['không sao. tui ổn. (khóc)', 'bug này làm tui khóc 2 lần rồi.', 'nước mắt này là cafein đó.', 'đừng nhìn. tui đang xả RAM.',
+    'ai đó nói "việc nhỏ thôi". tui tin.', 'estimate 2 điểm. giờ là tuần thứ ba.', 'khóc xong code tiếp. quy trình chuẩn.'],
+  rage: ['AAAAAAAAA.', 'ai push thẳng lên main???', 'BỐC KHÓI RỒI ĐÓ.', 'tui bình tĩnh. TUI RẤT BÌNH TĨNH.',
+    'AI SỬA FILE CONFIG CỦA TUI?', 'lại đổi requirement giữa sprint hả???', 'ĐỪNG AI NÓI CHỮ "NHANH THÔI" NỮA.'],
+  facepalm: ['trời ơi.', 'lại là cái lỗi thiếu dấu phẩy.', 'tui không muốn biết nữa.', 'ai đặt tên biến là data2_final_v3?',
+    'bug do chính tui viết hôm qua. tuyệt.', 'test pass vì không có test.', 'quên lưu file. 40 phút debug.'],
+  shrug: ['ai biết.', 'chạy trên máy tui mà.', 'kệ. ¯\\_(ツ)_/¯', 'không phải việc của tui. chắc vậy.', 'nó tự chạy được. tui không đụng.', 'có thể là cache. luôn luôn là cache.'],
+  sideeye: ['…hmm.', 'tui thấy hết đó nha.', 'đáng ngờ.', 'commit message "fix" là sao?', 'ai vừa force push?', 'cái PR 3000 dòng đó…'],
+  melt: ['tan chảy…', 'tui đang thành chất lỏng.', 'nóng quá. hay tại deadline.', 'đợi tui đông lại đã.', 'CPU 100%. tui cũng vậy.'],
+  soul: ['hồn tui đi đâu rồi?', 'tạm biệt thể xác.', 'đi ra ngoài hít thở chút. hồn thôi.', 'xác ở lại họp giùm.', 'linh hồn đã logout.'],
+  hide: ['không có ai ở đây.', 'tui là cái thùng.', 'đừng giao việc cho thùng.', 'trốn tạm 5 phút. 5 tiếng.', 'thùng này có wifi không?'],
+  corner: ['để tui ngồi đây một chút.', 'góc này hiểu tui.', 'đang sạc lại tâm hồn… 1%', 'không cần an ủi. (cần)', 'góc nhà là bạn thân.'],
+  rofl: ['HAHAHAHA.', 'cười để khỏi khóc.', 'cái estimate 2 ngày. HAHA.', 'tui cười tới lệch tai.', 'ai đó nói "sẽ không có bug". HAHAHA.'],
+  faint: ['…x_x', 'tui ngất chút.', 'hết pin.', 'gọi tui khi sprint xong.', 'đặt tui nằm đây. đừng hỏi.'],
+  headbang: ['đập đầu vào bàn phím = code mới.', 'cộc. cộc. cộc.', 'có thể cách này sẽ fix được.', 'asdfjkl;asdfjkl;', 'thử reset não.'],
+  tease: ['lêu lêu.', 'bé ơi bé à.', 'đuổi kịp tui không?', 'code ông có bug kìa.', 'ông commit thiếu file kìa. đùa đó. hay không?', 'nhìn mặt ông kìa.'],
+  chase: ['ĐỨNG LẠI.', 'quay lại đây!', 'tui bắt được là biết tay.', 'chạy đi đâu!', 'tui nhớ mặt ông rồi!'],
+  hug: ['lại đây.', 'ôm cái. không tính phí.', 'tui cũng buồn. ôm cho đỡ.', 'không sao đâu. bug nào rồi cũng fix được. chắc vậy.'],
+  hugged: ['…cảm ơn.', 'ấm ghê.', 'đừng nói ai biết.', 'ok tui đỡ hơn 3%.'],
+  highfive: ['đập tay!', 'ê team!', 'xong một việc. đập tay cái.', 'build xanh! đập tay!'],
+  steal: ['ly này giờ của tui.', 'cảm ơn vì cà phê.', 'tui cần nó hơn.', 'chia sẻ là quan tâm.'],
+  stolen: ['?? cà phê tui đâu.', 'ăn cướp!', 'đó là ly thứ 6 của tui!', 'TRẢ ĐÂY.'],
+  spin: ['quaaaay.', 'chóng mặt. vui.', 'đời quay như chong chóng.', 'tui là spinner loading.'],
+  stretch: ['vươn vai cái.', 'xương kêu răng rắc.', 'ngồi 8 tiếng rồi đó.', 'lưng tui là của công ty.'],
+  pancake: ['bẹp.', 'tui thành bánh rồi.', 'trọng lực thắng.', 'nằm im đây. dễ chịu.'],
+
+  working: [
+    'đang code… như thể nó có ý nghĩa.', 'chạy {tool}. cầu trời đừng đỏ.', 'lại {tool}. lại hy vọng.',
+    'gõ gõ gõ. đời là chuỗi phím bấm.', 'làm việc cho {project}. {project} có biết không?',
+    'tui làm, Claude làm, ai cũng làm. ai được nghỉ?', 'đang chạy {tool}… đừng hỏi bao giờ xong.',
+    'Claude gõ nhanh hơn tui. tui chỉ ngồi gật gù.', '{tool} lần này chắc ổn. lần trước cũng nói vậy.',
+    'tui đang supervise. nghĩa là ngồi nhìn.', 'tiến độ: đang có tiến độ.', '{project} ơi cố lên. tui cũng cố… ngồi.',
+  ],
+  thinking: ['để nghĩ đã…', 'suy nghĩ là đau.', 'hmm. hmmmm.', 'đang load não… 3%', 'Claude đang nghĩ. tui thì đang lo.',
+    'nghĩ cách làm. hoặc cách trốn.', 'đọc lại yêu cầu lần thứ 4.', 'có 3 cách làm. cả 3 đều tệ.'],
+  waiting: ['ê. duyệt đi.', 'tui chờ được. tui giỏi chờ lắm.', 'bấm Yes giùm cái.', 'cần quyền. như mọi thứ trong đời.', 'đang chờ ông… hoặc đang chạy lâu. ai biết.',
+    'cầm biển này mỏi tay rồi đó.', 'ông ơi. ông ơiii.', 'Claude xin phép. tui xin nghỉ.'],
+  done: ['xong. chắc vậy.', 'chạy được rồi. đáng ngờ.', 'yay. (giọng đều đều)', 'ship đi trước khi tui đổi ý.', '{project} xong việc. tui thì chưa xong đời.',
+    'đừng chạy lại. nó sẽ hỏng.', 'xong rồi! ai test chưa? thôi khỏi.'],
+  error: ['toang.', 'đỏ lòm. quen rồi.', 'lỗi không phải tại tui. chắc vậy.', 'stack trace dài hơn tuổi thơ tui.', 'lại toang. ngạc nhiên ghê.',
+    '{tool} phản bội tui.', 'exit code 1. như điểm thi của tui.'],
+
+  poke: ['đừng.', 'chọc nữa tui báo HR.', '?', 'tui đang bận buồn.', 'có việc gì… hay chọc chơi?', 'ui.', 'tui cảm nhận được sự chọc.',
+    'chuột của ông có vấn đề hả?', 'đây là quấy rối nơi công sở.', 'lần thứ hai rồi đó.'],
+  angry: ['ĐỦ RỒI.', 'tui sẽ nhớ chuyện này.', 'chọc lần nữa là tui nghỉ việc.', 'tui ghi sổ đen rồi.'],
+  dangle: ['thả tui xuống.', 'đây là bắt cóc.', 'ờ. bay. hay quá.', 'tui sợ độ cao. và mọi thứ khác.', 'đây là sa thải bằng tay hả?', 'nhẹ tay. tui là tài sản công ty.'],
+  land: ['ui.', 'ít nhất tui đã từng bay.', 'trọng lực cũng ghét tui.', 'hạ cánh. không ai đón.', 'mông tui. ui.'],
+  spawn: ['lại phải đi làm.', 'ai gọi tui?', 'có mặt. không vui lắm.', 'tui tới rồi. đừng mong gì nhiều.', 'chấm công. rồi ngủ.'],
+  helper: ['tui là subagent. lương bằng không.', 'được giao việc. không được hỏi tại sao.', 'phụ việc tới.', 'sếp ơi em tới.'],
+  leave: ['tan ca. bye.', 'session xong. tui về với hư vô.', 'đi đây. đừng nhớ.', 'log out khỏi cuộc đời. tạm thời.'],
+  leap: ['qua màn kia chơi.', 'màn này chán rồi.', 'wheeee. (giọng đều đều)', 'màn bên kia chắc cũng vậy thôi.', 'đổi gió cái.'],
+  leapUp: ['lên tầng trên chơi.', 'nhảy cao hơn kỳ vọng của sếp.', 'trên đó chắc yên tĩnh hơn.', 'bay lên. như giá cà phê.'],
+  dropDown: ['xuống tầng dưới.', 'rơi tự do. như KPI.', 'tạm biệt trên này.', 'nhảy xuống. đừng cản.'],
+  arrive: ['tới rồi. cũng vậy.', 'màn này nhiều tab hơn.', 'ai mở Jira ở đây vậy?', 'hạ cánh an toàn. tiếc ghê.', 'màn mới, buồn cũ.'],
+
+  // cãi nhau / đánh nhau
+  argueStart: ['ê. nói chuyện chút.', 'tui cần nói chuyện với ông.', 'chuyện hôm qua chưa xong đâu.'],
+  mediate: ['thôi thôi hai ông.', 'bình tĩnh. ai cũng sai.', 'cãi nhau tốn RAM lắm.', 'đi uống cà phê đi rồi tính.'],
+  fightStart: ['RA ĐÂY.', 'hôm nay một mất một còn.', 'tui nhịn đủ rồi.', 'xắn tay áo hoodie lên.'],
+  win: ['ai là thỏ đầu đàn giờ?', 'nhẹ nhàng thôi mà.', 'chuyện nhỏ.', 'GG. dễ.', 'tập gym vì ngày này.'],
+  lose: ['…tui để ông thắng đó.', 'tui trượt chân.', 'ván sau.', 'không tính. lag.', 'tui đang bị cảm.'],
+  draw: ['hoà. cả hai cùng thua.', 'không ai thắng. như mọi cuộc họp.', 'mệt quá. nghỉ.'],
+  makeup: ['thôi làm hoà.', 'cãi chi cho mệt.', 'đi ăn trưa không?', 'tui xin lỗi. một chút.'],
+  watch: ['ồ ồ ồ.', 'quay lại đăng nhóm chat.', 'đánh đi đánh đi.', 'tui cược con xám.', 'có bắp rang không?', 'drama giờ trưa.'],
+  cheer: ['hay quá!', 'tiếp đi!', 'ối!', 'đỉnh!'],
+  strike: ['STRIKE!', 'xin lỗi. không xin lỗi.', 'bowling thỏ.', 'trúng!'],
+  knocked: ['AI NÉM ĐÓ?', 'tui đang đứng yên mà!', 'ui da!', 'tai nạn lao động.'],
+  revenge: ['nhớ mặt ông rồi đó.', 'tới lượt tui.', 'nợ thì phải trả.'],
+  mock: ['lại toang à?', 'hehe đỏ kìa.', 'cần tui giúp không? đùa đó.', 'build đỏ đẹp ghê.'],
+  mockReply: ['im.', 'lần sau tới lượt ông.', 'ít nhất tui có làm.', 'đi chỗ khác chơi.'],
+  congrats: ['đỉnh vậy!', 'xong rồi hả? thật hả?', 'đi ăn mừng thôi!', 'cho tui ké công với.'],
+  scared: ['á! cái gì đó?', 'ai đó?', 'hú hồn.'],
+};
+
+// Câu theo giờ trong ngày / ngày trong tuần
+function timeLines() {
+  const d = new Date(), h = d.getHours(), wd = d.getDay();
+  const pool = [];
+  if (h >= 0 && h < 5) pool.push('mấy giờ rồi mà còn thức?', 'giờ này chỉ có thỏ với bug thức.', 'đi ngủ đi. tui nói thật.', 'ca đêm không có phụ cấp.');
+  if (h >= 5 && h < 9) pool.push('sáng sớm. chưa có cà phê. đừng nói chuyện với tui.', 'buổi sáng là ý tưởng tồi.', 'mới mở mắt đã thấy Slack.');
+  if (h >= 11 && h < 13) pool.push('đói. ăn gì giờ.', 'trưa nay ăn cơm tấm không?', 'không ai làm việc lúc 11h59.', 'đói tới mức đọc code thấy mì.');
+  if (h >= 13 && h < 15) pool.push('buồn ngủ sau ăn. luật tự nhiên.', 'mắt nhắm mắt mở. đang review code.', 'giấc ngủ trưa bị đánh cắp.');
+  if (h >= 17 && h < 19) pool.push('5 giờ chiều rồi. về được chưa.', 'giờ này deploy là liều đó.', 'tan làm! (vẫn ngồi đây)');
+  if (h >= 21 && h < 24) pool.push('tối rồi còn code.', 'thêm một commit nữa rồi ngủ. (nói dối)', 'tối nay ngủ sớm. (cười)');
+  if (wd === 1) pool.push('thứ Hai. không cần giải thích.', 'thứ Hai lại tới. nó không bao giờ trễ.');
+  if (wd === 5) pool.push('thứ Sáu! đừng ai deploy.', 'thứ Sáu rồi. tinh thần đã về nhà.');
+  if (wd === 0 || wd === 6) pool.push('cuối tuần mà vẫn mở máy?', 'cuối tuần. sao tui ở đây.');
+  return pool;
+}
+
+// Cặp hội thoại ngắn khi 2 đứa đứng gần nhau
+const CHATS = [
+  ['ông ổn không?', 'không. còn ông?'], ['cuối tuần làm gì?', 'nằm.'], ['tui vừa fix được bug.', 'nó sẽ quay lại.'],
+  ['họp lúc mấy giờ?', 'họp là gì? tui không biết.'], ['đi ăn không?', 'ăn để làm gì… ừ đi.'], ['code này ai viết vậy?', 'tui. 3 tháng trước.'],
+  ['sprint này kịp không?', 'ha.'], ['ông có ước mơ gì không?', 'được ngủ trưa không ai gọi.'], ['nghe nói AI sẽ thay thế mình.', 'mời nó vào làm thay đi.'],
+  ['hôm nay trời đẹp ghê.', 'đừng nói vậy. nó nghe thấy là mưa.'], ['ông thích tab hay space?', 'tui thích nghỉ việc.'],
+  ['sếp đi ngang kìa.', '*giả vờ gõ phím*'], ['tui mới học Rust.', 'chúc ông sống sót.'], ['ông commit chưa?', 'commit với cái gì? với cuộc đời này hả?'],
+  ['có ai thấy cái sạc của tui không?', 'thấy. tui đang dùng.'], ['tui có ý tưởng startup.', 'đừng.'], ['tui giảm được 2 ly cà phê/ngày.', 'còn bao nhiêu?', ],
+  ['năm nay tăng lương không?', 'tăng. tăng khối lượng công việc.'], ['test chạy hết chưa?', 'chạy hết. chạy hết đi đâu thì không biết.'],
+  ['ông có nghe tiếng gì không?', 'tiếng quạt laptop. nó đang khóc.'], ['ê tối nay ship được không?', 'được. ship đồ ăn.'],
+];
+
+// Kịch bản cãi nhau: các câu luân phiên A, B, A, B…; end: kết thúc gợi ý
+const ARGUMENTS = [
+  { lines: ['tab mới là chân ái.', 'space. 2 space. hết.', 'tab tiết kiệm byte!', 'ổ cứng ông 1TB mà tiếc byte?', 'NGUYÊN TẮC!', 'NGUYÊN TẮC CỦA AI?'], end: 'fight' },
+  { lines: ['ai deploy chiều thứ Sáu?', 'tui. có sao không?', 'giờ prod sập rồi đó.', 'nó sập vì nó muốn sập.', 'ông phải trực cuối tuần.', '…tui rút lại câu "có sao không".'], end: 'any' },
+  { lines: ['ai uống ly cà phê của tui?', 'ly nào?', 'ly có chữ "ĐỪNG ĐỤNG".', 'tui tưởng đó là lời khuyên.', 'TRẢ CÀ PHÊ ĐÂY.', 'nó ở trong bụng tui rồi.'], end: 'fight' },
+  { lines: ['ông review PR của tui chưa?', 'rồi. 87 comment.', '87???', 'tui còn nương tay.', 'ông comment "đổi tên biến" 40 lần!', 'vì ông đặt tên biến là a, b, c.'], end: 'any' },
+  { lines: ['dark mode mới là sống.', 'light mode cho mắt sáng.', 'mắt ông sáng hay chói?', 'ít nhất tui thấy được bug.', 'tui thấy bug trong bóng tối. như ninja.', 'ninja gì mà 3 tháng chưa fix xong.'], end: 'fight' },
+  { lines: ['ông xoá branch của tui hả?', 'branch nào?', 'feature/final-final-v2.', 'à. tưởng rác.', 'ĐÓ LÀ 2 TUẦN CÔNG SỨC.', 'vậy sao không push?'], end: 'fight' },
+  { lines: ['cuộc họp này có thể là một email.', 'email này có thể là một tin nhắn.', 'tin nhắn này có thể là im lặng.', 'đúng. vậy im đi.', 'ông im trước.', '…'], end: 'makeup' },
+  { lines: ['tui estimate 3 điểm.', '13 điểm.', '3!', '13! ông chưa đọc spec.', 'spec có 1 dòng mà.', 'chính vì vậy nên 13.'], end: 'any' },
+  { lines: ['ai để console.log lên prod?', 'không phải tui.', 'nó in ra "tui đây nè".', '…ok là tui.', 'ông có biết khách thấy hết không?', 'thì khách biết tui đang ở đó. thân thiện mà.'], end: 'makeup' },
+  { lines: ['ông ngáy trong lúc họp.', 'tui đang suy nghĩ sâu.', 'suy nghĩ ra tiếng "khò"?', 'đó là âm thanh của trí tuệ.', 'mic ông đang bật.', '…tui đi chỗ khác đây.'], end: 'walk' },
+  { lines: ['ông lại đổi config ESLint!', 'tui cải tiến nó.', 'giờ cả repo đỏ lòm!', 'thì giờ mình biết code xấu cỡ nào.', 'ÔNG MUỐN GÌ?', 'tui muốn thế giới có dấu chấm phẩy.'], end: 'fight' },
+  { lines: ['ông chiếm hết cái sạc.', 'tui cần nó.', 'pin tui 2%!', 'tinh thần tui 1%. tui cần hơn.', 'sạc đâu sạc tinh thần!', 'ông không hiểu đâu.'], end: 'any' },
+];
+
+// ---- Thầy Thỏ Triết Gia ----
+Object.assign(LINES, {
+  wisdom: [
+    'con à, bug không nằm trong code. bug nằm trong lòng.', 'người khôn không sửa bug. người khôn không viết code.',
+    'deadline như dòng sông. con không thể bước qua nó hai lần. vì lần đầu đã trễ.',
+    'ta từng trẻ như con. rồi ta làm frontend.', 'hạnh phúc là khi build xanh mà không biết vì sao.',
+    'muốn đi nhanh hãy đi một mình. muốn đi xa hãy viết test.', 'cái gì đến sẽ đến. trừ tiền thưởng.',
+    'đời là một vòng lặp. chỉ là ta chưa tìm ra điều kiện thoát.', 'đừng hỏi code làm được gì cho con. hãy hỏi con đã commit chưa.',
+    'người xưa nói: "chạy trên máy ta". người nay nói: "dùng Docker đi".', 'trà nguội rồi. như tình yêu với dự án cũ.',
+    'tâm tĩnh thì tab tự đóng.', 'cái tôi lớn nhất của dev là nghĩ code mình không có bug.',
+    'mỗi lần con nói "sửa nhanh thôi", một con bug được sinh ra.', 'thiền đi con. thiền không cần merge.',
+    'ta đã thấy nhiều framework sinh ra và chết đi. ta vẫn dùng jQuery trong tim.',
+    'cuộc đời là refactor. không bao giờ xong, chỉ có tạm dừng.', 'con không lười. con đang tối ưu năng lượng vũ trụ.',
+    'đúng hay sai không quan trọng. quan trọng là ai merge trước.', 'nghe ta nói này…', 'trà ngon. đời đắng. cân bằng.',
+  ],
+  lectureReply: ['dạ.', 'hiểu chết liền.', 'thầy ơi em đi vệ sinh.', 'ừm… dạ… vâng.', 'thầy nói tiếp đi, em đang ngủ.', 'cái này lên được TikTok không thầy?', 'thầy có slide không?'],
+  lectureClap: ['hay quá thầy!', 'thấm. thấm thật.', 'em ghi vào note rồi.', 'thầy ơi nhận em làm đệ tử.'],
+  lectureFlee: ['em có họp! đi đây!', 'thầy ơi nhà em cháy!', 'em quên tắt bếp!'],
+  lectureArgue: ['thầy nói sai rồi.', 'cái đó là lý thuyết thôi thầy.', 'thời thầy khác, thời em khác.'],
+  duelStart: ['rút kiếm ra!', 'hôm nay phân thắng bại.', 'kiếm pháp code review!', 'đỡ này!'],
+  duelWin: ['kiếm pháp vô địch.', 'mài kiếm 3 năm chỉ để chờ ngày này.', 'thua rồi về luyện thêm.'],
+  standoff: ['đất này không đủ chỗ cho hai ta.', 'rút súng đi.', 'đếm tới ba.', 'một… hai…'],
+  shot: ['ÁI!', 'trúng rồi!', 'tui chết rồi. (nằm nghỉ chút)', 'đạn xốp mà đau ghê!', 'tui sẽ trở lại.'],
+  shooterWin: ['nhanh hơn ông 0.1 giây.', 'pew pew.', 'thổi khói nòng súng.', 'lần sau tập rút súng nhanh hơn.'],
+  miss: ['trượt?', 'hết đạn rồi.', 'súng đồ chơi mà. ai ngờ.', 'thôi huề đi.'],
+  pew: ['pew pew!', 'ăn đạn!', 'bùm bùm!', 'ĐỨNG LẠI!'],
+});
+
+// Bài giảng nhiều câu của Thầy (giảng liền một mạch)
+const LECTURES = [
+  ['con ngồi xuống đây.', 'ngày xưa ta cũng nghĩ code sạch sẽ cứu thế giới.', 'rồi ta gặp code legacy.', 'giờ ta chỉ mong nó đừng sập lúc ta nghỉ phép.'],
+  ['con biết vì sao ta đeo kính không?', 'để nhìn rõ bug.', 'nhưng nhìn rõ quá thì buồn.', 'nên ta tháo kính ra. rồi không đọc được code nữa.'],
+  ['có ba loại dev.', 'loại viết test.', 'loại nói sẽ viết test.', 'và loại như con.'],
+  ['con có biết tại sao cây tre cong mà không gãy?', 'vì nó không phải deploy thứ Sáu.', 'hãy như cây tre.', 'cong lưng mà làm. đừng gãy.'],
+  ['ta đã ngồi thiền 40 năm.', 'ta đã đạt tới cảnh giới không cảm xúc.', 'cho tới khi ai đó gửi ta file "final_final_v7.docx".', 'giờ ta lại phải thiền thêm 40 năm.'],
+  ['con muốn hạnh phúc không?', 'đơn giản lắm.', 'tắt thông báo Slack.', 'rồi đổi nghề.'],
+  ['con nhìn ly trà này.', 'nó rỗng một nửa hay đầy một nửa?', 'sai. nó là ly của ta. đừng đụng vào.'],
+  ['đời người như một pull request.', 'có người approve, có người request changes.', 'có người để đó ba tháng không ai đọc.', 'con là cái thứ ba. ta biết.'],
+  ['con trâu đi trước, cái cày theo sau.', 'deadline đi trước, bug theo sau.', 'con hiểu chưa?', 'ta cũng chưa.'],
+  ['ta có một bí kíp.', 'khi không biết làm gì…', 'hãy restart.', 'cả máy lẫn cuộc đời.'],
+];
+
+const NAMES = ['Mệt', 'Chán', 'Buồn Ngủ', 'Lười', 'Kệ', 'Hết Pin', 'Bỏ Cuộc', 'Thứ Hai', 'Deadline', 'Ừ', 'Quầng Thâm', 'Tăng Ca'];
+const SAGE_NAMES = ['Thầy Ngộ', 'Lão Thỏ', 'Thầy Tĩnh'];
+
+</script>
+<script>
+// Pixel sprites 16x16 cho team thỏ doomer. Mỗi ký tự = 1 pixel, '.' = trong suốt.
+const CHARS = {
+  insomnia: {
+    name: 'Thỏ Mất Ngủ',
+    pal: { W: '#f4f1ee', p: '#e8aab4', L: '#b9b0bb', P: '#222222', b: '#b9a6b8', d: '#555555', O: '#7a2a30', H: '#3b3f52', h: '#525873' },
+    skin: 'W', sclera: 'W', lid: 'L',
+    eyes: [[4, 8], [11, 8]], mouth: [7, 11], legRows: [15],
+    grid: [
+      '....WW....WW....',
+      '...WpW....WWWWW.',
+      '...WpW....WpW...',
+      '...WpW....WpW...',
+      '...WWWWWWWWWW...',
+      '..WWWWWWWWWWWW..',
+      '.WWWWWWWWWWWWWW.',
+      '.WWLLWWWWWWLLWW.',
+      '.WWWPWWWWWWPWWW.',
+      '.WWbbWWWWWWbbWW.',
+      '.WWWWWWppWWWWWW.',
+      '..WWWWWddWWWWW..',
+      '..HHHHHHHHHHHH..',
+      '.WHHHhHHHHhHHHW.',
+      '..HHHHHHHHHHHH..',
+      '...HH......HH...',
+    ],
+  },
+  beanie: {
+    name: 'Thỏ Xám Beanie',
+    pal: { G: '#9a98a2', p: '#e8aab4', K: '#1c1c22', k: '#3a3a46', L: '#6e6c76', W: '#ffffff', P: '#222222', d: '#4a4850', O: '#7a2a30', H: '#6b2f3a', h: '#84404c' },
+    skin: 'G', sclera: 'W', lid: 'L',
+    eyes: [[4, 8], [11, 8]], mouth: [7, 10], legRows: [15],
+    grid: [
+      '...GG......GG...',
+      '...GpG....GpG...',
+      '...GpG....GpG...',
+      '...KKKKKKKKKK...',
+      '..KKKKKKKKKKKK..',
+      '..kkkkkkkkkkkk..',
+      '.GGGGGGGGGGGGGG.',
+      '.GGLLLGGGGLLLGG.',
+      '.GGWPWGGGGWPWGG.',
+      '.GGGGGGppGGGGGG.',
+      '..GGGGGddGGGGG..',
+      '..HHHHHHHHHHHH..',
+      '.HHHhHHHHHHhHHH.',
+      '.GHHHHHHHHHHHHG.',
+      '..HHHHHHHHHHHH..',
+      '...HH......HH...',
+    ],
+  },
+  carrot: {
+    name: 'Thỏ Cà Rốt Héo',
+    pal: { B: '#9b6b45', p: '#e8aab4', L: '#6e4a30', W: '#ffffff', P: '#222222', d: '#3a2416', O: '#7a2a30', T: '#e6d3b8', H: '#e07b2f', g: '#7d8a5a' },
+    skin: 'B', sclera: 'W', lid: 'L',
+    eyes: [[5, 6], [11, 6]], mouth: [7, 8], legRows: [14, 15],
+    grid: [
+      '....BB....BB.....',
+      '....BpB..BpB.....',
+      '....BpB..BpB.....',
+      '....BBBBBBBB.....',
+      '...BBBBBBBBBB....',
+      '...BLLBBBBLLB....',
+      '...BWPBBBBWPB....',
+      '...BBBBppBBBB....',
+      '....BBBddBBB.....',
+      '....TTTTTTTTT.Hg.',
+      '...BTTTTTTTTTBHgg',
+      '...BTTTTTTTTTH..g',
+      '...BTTTTTTTTTH...',
+      '....TTTTTTTTT....',
+      '....BB.....BB....',
+      '...BBB....BBB....',
+    ],
+  },
+  office: {
+    name: 'Thỏ Văn Phòng',
+    pal: { D: '#3a3640', p: '#c98a9a', L: '#5a5560', W: '#ffffff', P: '#222222', d: '#a9a3b6', O: '#c0453a', S: '#e8e8ee', H: '#c0453a', M: '#c97b4a', K: '#333333' },
+    skin: 'D', sclera: 'W', lid: 'L',
+    eyes: [[5, 6], [11, 6]], mouth: [7, 8], legRows: [14, 15],
+    grid: [
+      '....DD....DD....',
+      '....DpD..DpD....',
+      '....DpD..DpD....',
+      '....DDDDDDDD....',
+      '...DDDDDDDDDD...',
+      '..DDLLDDDDLLDD..',
+      '..DDWPDDDDWPDD..',
+      '..DDDDDppDDDDD..',
+      '...DDDDddDDDD...',
+      '..SSSSSHHSSSSS..',
+      '.DSSSSSHHSSSSSD.',
+      '.DSSSSHHHHSSSSD.',
+      '..SSSSSHHSSSSS..',
+      '..SSSSSSSSSSSS..',
+      '...KK......KK...',
+      '...KK......KK...',
+    ],
+  },
+  sage: {
+    name: 'Thầy Thỏ Triết Gia',
+    pal: { W: '#ece9e2', p: '#e8aab4', G: '#3a3020', P: '#222222', d: '#555555', O: '#7a2a30', B: '#fdfdfd', R: '#5b4a86', K: '#e4c75a', S: '#8b5a3c', L: '#bdb8b0' },
+    skin: 'W', sclera: 'W', lid: 'L',
+    eyes: [[4, 7], [11, 7]], mouth: [7, 10], legRows: [15],
+    grid: [
+      '....WW....WW....',
+      '....WpW..WpW....',
+      '....WpW..WpW....',
+      '...WWWWWWWWWW..K',
+      '..WWWWWWWWWWWW.S',
+      '..GGGGGWWGGGGG.S',
+      '.WGWWWGGGGWWWGWS',
+      '.WGWPWGWWGWPWGWS',
+      '.WGGGGGWWGGGGGWS',
+      '.WWWWWWppWWWWWWS',
+      '..BBWWWddWWWBB.S',
+      '..BBBBBBBBBBBB.S',
+      '.RBBBBBBBBBBBBRS',
+      '.RRBBBBBBBBBBRRS',
+      '..RRRBBBBBBRRR.S',
+      '...RR......RR..S',
+    ],
+  },
+  hook: {
+    name: 'Thỏ Dây Móc',
+    pal: { T: '#e6dccb', p: '#e8aab4', G: '#2b2f38', L: '#5fc4c0', W: '#ffffff', P: '#222222', d: '#5a4a3a', O: '#7a2a30', S: '#1f9e96', N: '#33363f', n: '#4a4e5a', H: '#b9bec8', K: '#bcae96' },
+    skin: 'T', sclera: 'W', lid: 'K',
+    eyes: [[4, 7], [10, 7]], mouth: [6, 9], legRows: [15],
+    grid: [
+      '...TT....TT.....',
+      '...TpT..TpT.....',
+      '...TpT..TpT.....',
+      '..TTTTTTTTTT....',
+      '..GGGGGGGGGG....',
+      '..GLLGGGGLLG....',
+      '.TTTTTTTTTTTT...',
+      '.TTWPTTTTWPTT...',
+      '.TTTTTppTTTTT...',
+      '..TTTTddTTTT....',
+      '..SSSSSSSSSSSS..',
+      '..NNNNNNNNNNSSS.',
+      '.TNNNnNNnNNNTSS.',
+      '..NNNNNNNNNN..HH',
+      '..NNNNNNNNNN..H.',
+      '...NN....NN.....',
+    ],
+  },
+  jet: {
+    name: 'Thỏ Phản Lực',
+    pal: { G: '#a9a7b0', p: '#e8aab4', B: '#6b4a2e', Y: '#e6a93a', W: '#ffffff', P: '#222222', d: '#4a4850', O: '#7a2a30', K: '#7c8059', k: '#646847', M: '#c9ced6', L: '#86848c' },
+    skin: 'G', sclera: 'W', lid: 'L',
+    eyes: [[4, 6], [10, 6]], mouth: [6, 8], legRows: [14, 15],
+    grid: [
+      '................',
+      '...GG....GG.....',
+      '...GpG..GpG.....',
+      '..BYYBBBBYYB....',
+      '.BBBBBBBBBBBB...',
+      '.GGGGGGGGGGGG...',
+      '.GGWPGGGGWPGG...',
+      '.GGGGGppGGGGG...',
+      '..GGGGddGGGG....',
+      'MKKKKKKKKKKKKM..',
+      'MKKKkKKKKkKKKM..',
+      'MKKKKKKKKKKKKM..',
+      'MMKKKKKKKKKKMM..',
+      '.MKKKKKKKKKKM...',
+      '...KK....KK.....',
+      '...KK....KK.....',
+    ],
+  },
+  puff: {
+    name: 'Thỏ Phình To',
+    pal: { Q: '#f0c7a8', p: '#e8aab4', W: '#ffffff', P: '#222222', d: '#6a4a3a', O: '#7a2a30', A: '#8fb8d8', a: '#6f9cc0', L: '#c99d80' },
+    skin: 'Q', sclera: 'W', lid: 'L',
+    eyes: [[4, 8], [10, 8]], mouth: [6, 10], legRows: [15],
+    grid: [
+      '................',
+      '................',
+      '................',
+      '...QQ....QQ.....',
+      '...QpQ..QpQ.....',
+      '...QpQ..QpQ.....',
+      '..QQQQQQQQQQ....',
+      '.QQQQQQQQQQQQ...',
+      '.QQWPQQQQWPQQ...',
+      '.QQQQQppQQQQQ...',
+      '..QQQQddQQQQ....',
+      '..AAAAAAAAAA....',
+      '.QAAAaAAaAAAQ...',
+      '..AAAAAAAAAA....',
+      '..AAAAAAAAAA....',
+      '...AA....AA.....',
+    ],
+  },
+};
+
+// Bảng màu khi Thỏ Phình To nổi giận
+const PUFF_RAGE = { Q: '#e8673c', p: '#ffb0a0', L: '#b8452a', d: '#5a1a10' };
+
+// Màu hoodie cho đồng đội (ký tự H/h trong grid)
+const HOODIES = [
+  ['#3b3f52', '#525873'], ['#6b2f3a', '#84404c'], ['#2f4a3f', '#43634f'], ['#4a3b6b', '#5f4f86'],
+  ['#5a4a32', '#74603f'], ['#22303f', '#334659'], ['#444444', '#5c5c5c'], ['#7a4b2a', '#956039'],
+];
+
+// Canvas logic: 30 x 26 pixel, nhân vật đặt tại (OX, OY)
+const SPR_W = 30, SPR_H = 26, OX = 7, OY = 8;
+
+function renderSprite(ctx, ch, pal, st) {
+  ctx.clearRect(0, 0, SPR_W, SPR_H);
+  const g = ch.grid.map((r) => [...r]);
+  const set = (x, y, c) => { if (g[y] && x >= 0) g[y][x] = c; };
+
+  // Chân khi đi/nhảy: tách chân ra 2 bên
+  if (st.legFrame) {
+    for (const row of ch.legRows) {
+      const orig = g[row];
+      const nr = orig.map(() => '.');
+      orig.forEach((c, x) => { if (c !== '.') { const nx = x < 8 ? x - 1 : x + 1; if (nx >= 0) nr[nx] = c; } });
+      g[row] = nr;
+    }
+  }
+
+  // Mắt
+  ch.eyes.forEach(([px, py], i) => {
+    for (let dx = -1; dx <= 1; dx++) { set(px + dx, py - 1, ch.skin); set(px + dx, py, ch.sclera); }
+    set(px, py, 'P');
+    const e = st.eyes;
+    if (e === 'tired') for (let dx = -1; dx <= 1; dx++) set(px + dx, py - 1, ch.lid);
+    else if (e === 'closed') for (let dx = -1; dx <= 1; dx++) { set(px + dx, py, ch.lid); }
+    else if (e === 'wide') for (let dx = -1; dx <= 1; dx++) set(px + dx, py - 1, ch.sclera);
+    else if (e === 'angry') { const inner = i === 0 ? 1 : -1; set(px, py - 1, ch.lid); set(px + inner, py - 1, ch.lid); }
+    else if (e === 'down') { for (let dx = -1; dx <= 1; dx++) set(px + dx, py - 1, ch.lid); }
+    else if (e === 'side') { for (let dx = -1; dx <= 1; dx++) set(px + dx, py - 1, ch.lid); set(px, py, ch.sclera); set(px + 1, py, 'P'); }
+    else if (e === 'happy') { for (let dx = -1; dx <= 1; dx++) set(px + dx, py, ch.skin); set(px - 1, py, ch.lid); set(px, py - 1, ch.lid); set(px + 1, py, ch.lid); }
+    else if (e === 'cry') { for (let dx = -1; dx <= 1; dx++) set(px + dx, py, ch.lid); set(px, py - 1, ch.lid); }
+    else if (e === 'spiral') { set(px - 1, py - 1, 'P'); set(px, py - 1, 'P'); set(px + 1, py, 'P'); set(px - 1, py, ch.sclera); set(px, py, ch.sclera); }
+    else if (e === 'dead') {
+      for (let dx = -1; dx <= 1; dx++) set(px + dx, py - 1, ch.sclera);
+      set(px - 1, py - 1, 'P'); set(px + 1, py - 1, 'P'); set(px, py, 'P'); set(px - 1, py + 1, 'P'); set(px + 1, py + 1, 'P');
+      set(px - 1, py, ch.sclera); set(px + 1, py, ch.sclera);
+    }
+  });
+
+  // Miệng
+  const [mx, my] = ch.mouth;
+  for (let x = mx - 1; x <= mx + 2; x++) set(x, my, ch.skin);
+  set(mx - 1, my - 1, ch.skin); set(mx + 2, my - 1, ch.skin);
+  const m = st.mouth;
+  if (m === 'flat') { set(mx, my, 'd'); set(mx + 1, my, 'd'); }
+  else if (m === 'smile') { set(mx - 1, my - 1, 'd'); set(mx, my, 'd'); set(mx + 1, my, 'd'); set(mx + 2, my - 1, 'd'); }
+  else if (m === 'wide') { for (let x = mx - 1; x <= mx + 2; x++) set(x, my, 'd'); }
+  else if (m === 'open') { set(mx, my, 'O'); set(mx + 1, my, 'O'); }
+  else if (m === 'frown') { set(mx - 1, my, 'd'); set(mx, my - 1, 'd'); set(mx + 1, my - 1, 'd'); set(mx + 2, my, 'd'); }
+  else if (m === 'tongue' || m === 'laugh') { set(mx - 1, my, 'd'); set(mx, my, 'O'); set(mx + 1, my, 'O'); set(mx + 2, my, 'd'); }
+  else if (m === 'wobble') { set(mx - 1, my, 'd'); set(mx, my - 1, 'd'); set(mx + 1, my, 'd'); set(mx + 2, my - 1, 'd'); }
+
+  // Vẽ thân
+  g.forEach((row, y) => row.forEach((c, x) => {
+    if (c !== '.' && pal[c]) { ctx.fillStyle = pal[c]; ctx.fillRect(OX + x, OY + y, 1, 1); }
+  }));
+
+  // Props (toạ độ theo nhân vật)
+  const px = (x, y, c) => { ctx.fillStyle = c; ctx.fillRect(OX + x, OY + y, 1, 1); };
+  const rect = (x, y, w, h, c) => { ctx.fillStyle = c; ctx.fillRect(OX + x, OY + y, w, h); };
+  const f = st.frame || 0;
+  const P = st.props || [];
+
+  if (P.includes('laptop')) {
+    rect(4, 11, 8, 4, '#9aa0ad'); rect(3, 15, 10, 1, '#6b7280');
+    px(7, 12, '#e8e8ee'); px(8, 12, '#e8e8ee');
+    const skin = pal[ch.skin];
+    px(3, f % 2 ? 13 : 14, skin); px(12, f % 2 ? 14 : 13, skin);
+  }
+  if (P.includes('mug')) {
+    rect(15, 12, 2, 2, '#c97b4a'); px(17, 12, '#c97b4a'); px(15, 12, '#7a3f1f');
+    px(15 + (f % 2), 10, '#cfd3dc'); px(16 - (f % 2), 9, '#cfd3dc');
+  }
+  if (P.includes('phone')) {
+    rect(6, 12, 4, 3, '#222222'); rect(7, 12, 2, 2, f % 3 ? '#7fb3e0' : '#a8d0f0');
+  }
+  if (P.includes('sign')) {
+    rect(17, 2, 1, 12, '#8b5a3c');
+    rect(14, -5, 8, 7, '#f4ead0'); rect(14, -5, 8, 1, '#d8c9a2');
+    const bob = f % 2;
+    rect(17, -4 + bob, 2, 3, '#c0453a'); rect(17, 0 + bob, 2, 1, '#c0453a');
+  }
+  if (P.includes('cloud')) {
+    rect(5, -7, 5, 1, '#8d96a6'); rect(3, -6, 10, 1, '#8d96a6'); rect(1, -5, 14, 1, '#8d96a6'); rect(2, -4, 12, 1, '#6f7888');
+    [3, 6, 9, 12].forEach((c, i) => px(c, -3 + ((f + i * 2) % 4), '#6fa8dc'));
+  }
+  if (P.includes('zzz')) {
+    const z = (x, y, c) => { rect(x, y, 3, 1, c); px(x + 1, y + 1, c); rect(x, y + 2, 3, 1, c); };
+    const up = f % 4;
+    z(13, -2 - up, '#9aa3c0');
+    if (up > 1) z(17, -6 - up, '#b8bfd6');
+  }
+  if (P.includes('qmark')) {
+    const y = -7 + (f % 2);
+    rect(12, y, 3, 1, '#e4c75a'); px(14, y + 1, '#e4c75a'); px(13, y + 2, '#e4c75a'); px(13, y + 4, '#e4c75a');
+  }
+  if (P.includes('sweat')) { px(15, 3, '#7fb3e0'); px(15, 4, '#7fb3e0'); px(14, 4, '#a8d0f0'); }
+  if (P.includes('confetti')) {
+    const cols = ['#e05252', '#e4c75a', '#6fa8dc', '#7fc98a', '#c98ad8'];
+    for (let i = 0; i < 9; i++) {
+      const sx = (i * 37 + f * 13) % 22 - 3, sy = ((i * 19 + f * 7) % 8) - 8;
+      px(sx, sy, cols[(i + f) % cols.length]);
+    }
+  }
+  // Lưỡi lè ra khi trêu
+  if (st.mouth === 'tongue') { const [tx, ty] = ch.mouth; px(tx, ty + 1, '#e8828f'); px(tx + 1, ty + 1, '#e8828f'); }
+  // Má đỏ (nổi giận / ngại)
+  if (st.blush) {
+    const [[lx, ly], [rx]] = ch.eyes;
+    const c = st.blush === 'rage' ? '#d9474799' : '#e8828f99';
+    rect(lx - 2, ly + 2, 2, 1, c); rect(rx + 1, ly + 2, 2, 1, c);
+    if (st.blush === 'rage') rect(lx - 1, ly - 3, 1, 2, '#d94747');
+  }
+  if (P.includes('tears')) {
+    ch.eyes.forEach(([ex, ey]) => {
+      for (let k = 0; k < 3; k++) px(ex + (k % 2 ? 0 : -1), ey + 1 + ((f + k * 2) % 6), '#6fa8dc');
+    });
+  }
+  if (P.includes('steam')) {
+    const c = f % 2 ? '#e8e8ee' : '#cfd3dc';
+    rect(-2 - (f % 2), -2 - (f % 3), 2, 2, c); rect(16 + (f % 2), -2 - ((f + 1) % 3), 2, 2, c);
+    px(-3, -5 - (f % 2), c); px(18, -5 - ((f + 1) % 2), c);
+  }
+  if (P.includes('ghost')) {
+    // linh hồn rời xác bay lên
+    const y = -2 - (f % 6), c = '#ffffffcc';
+    rect(5, y - 4, 6, 4, c); rect(6, y - 5, 4, 1, c); px(5, y, c); px(7, y, c); px(9, y, c);
+    px(7, y - 3, '#222222'); px(9, y - 3, '#222222');
+  }
+  if (P.includes('box')) {
+    rect(-1, 6, 18, 10, '#c79a5b'); rect(-1, 6, 18, 1, '#a57a40'); rect(-2, 5, 3, 2, '#d8b071'); rect(15, 5, 3, 2, '#d8b071');
+    rect(5, 10, 6, 1, '#a57a40');
+  }
+  if (P.includes('sweatdrop')) { rect(14, 0, 2, 3, '#a8d0f0'); px(15, -1, '#a8d0f0'); px(14, 2, '#ffffff'); }
+  if (P.includes('stars')) {
+    const c = '#e4c75a';
+    [[2, -3], [8, -5], [13, -3]].forEach(([sx, sy], i) => { const o = (f + i) % 3; px(sx + o, sy, c); px(sx + o, sy - 1, '#fff3b0'); });
+  }
+  if (P.includes('fist')) { rect(16, 9 - (f % 2) * 2, 2, 2, pal[ch.skin]); }
+  if (P.includes('hand')) { // facepalm: bàn tay che mắt
+    const [[lx, ly], [rx]] = ch.eyes;
+    rect(lx - 1, ly - 1, rx - lx + 3, 3, pal[ch.skin]); rect(lx - 1, ly + 1, rx - lx + 3, 1, '#00000033');
+  }
+  if (P.includes('shrug')) {
+    const s = pal[ch.skin], up = f % 2;
+    rect(-2, 9 - up, 2, 2, s); rect(16, 9 - up, 2, 2, s); px(-3, 8 - up, s); px(18, 8 - up, s);
+  }
+  if (P.includes('puddle')) { rect(-1, 15, 18, 1, '#9fb3c8'); rect(1, 14, 14, 1, '#b8c8d8'); }
+  if (P.includes('gun')) {
+    rect(14, 11, 4, 2, '#e07b2f'); rect(18, 11, 2, 1, '#3a3f4a'); rect(14, 13, 1, 2, '#3a3f4a'); px(16, 12, '#ffd34d');
+  }
+  if (P.includes('flash')) { rect(20, 10, 2, 3, '#ffd34d'); px(22, 11, '#fff3b0'); px(20, 9, '#fff3b0'); px(20, 13, '#fff3b0'); }
+  if (P.includes('sword')) {
+    rect(14, 12, 1, 2, '#8b5a3c'); rect(13, 11, 3, 1, '#e4c75a');
+    if (P.includes('swing')) { rect(15, 11, 7, 1, '#d8dde6'); rect(15, 12, 6, 1, '#aab3c2'); px(19, 9, '#ffffff88'); px(20, 10, '#ffffff88'); px(21, 13, '#ffffff88'); }
+    else { [[15, 10], [16, 9], [17, 8], [18, 7], [19, 6], [20, 5]].forEach(([x, y]) => px(x, y, '#d8dde6')); [[16, 10], [17, 9], [18, 8], [19, 7]].forEach(([x, y]) => px(x, y, '#aab3c2')); }
+  }
+  if (P.includes('scroll')) { rect(13, 10, 3, 4, '#f4ead0'); px(13, 10, '#c9b48a'); px(15, 13, '#c9b48a'); px(14, 11, '#8a7a5a'); px(14, 12, '#8a7a5a'); }
+  if (P.includes('jetflame')) {
+    const c1 = f % 2 ? '#ff9a3c' : '#ffd36b', c2 = f % 2 ? '#ffd36b' : '#ff5a3c';
+    [0, 13].forEach((x) => { rect(x, 13, 1, 2, c1); px(x, 15 + (f % 2), c2); px(x, 16, f % 3 ? '#ffffff55' : c2); });
+  }
+  if (P.includes('rope-hand')) { rect(13, 9, 3, 2, '#b9bec8'); }
+  if (P.includes('heart')) {
+    const c = '#e05252', y = -6 - (f % 2);
+    px(12, y, c); px(14, y, c); rect(11, y + 1, 5, 1, c); rect(12, y + 2, 3, 1, c); px(13, y + 3, c);
+  }
+}
+
+</script>
+<script>
+// Một con thỏ trên màn hình: vật lý, hành động, tự nói chuyện, gắn với session Claude.
+const rand = (a, b) => a + Math.random() * (b - a);
+const pick = (arr) => arr[Math.floor(Math.random() * arr.length)];
+const now = () => performance.now();
+function line(key, ctx = {}) {
+  const l = pick(LINES[key] || ['…']);
+  return l.replace(/\{tool\}/g, ctx.tool || 'tool').replace(/\{project\}/g, ctx.project || 'project');
+}
+
+// eyes / mouth / props / blush: hình dạng mặt; anim: class CSS cho chuyển động thân; dur: ms
+const ACT = {
+  fall:     { eyes: 'wide', mouth: 'open', anim: 'fall' },
+  land:     { eyes: 'tired', mouth: 'wide', dur: [1100, 1100], lines: 'land', say: 0.7, anim: 'squash' },
+  idle:     { eyes: 'tired', mouth: 'flat', dur: [3000, 7000], lines: 'idle', anim: 'breathe' },
+  walk:     { eyes: 'tired', mouth: 'flat', walk: true, lines: 'walk', anim: 'hop' },
+  sigh:     { eyes: 'tired', mouth: 'frown', props: ['cloud'], dur: [4000, 6500], lines: 'sigh', say: 0.8, anim: 'sad' },
+  coffee:   { eyes: 'tired', mouth: 'flat', props: ['mug'], dur: [4000, 7000], lines: 'coffee', say: 0.6, anim: 'breathe' },
+  void:     { eyes: 'wide', mouth: 'none', dur: [4000, 7000], lines: 'void', say: 0.6 },
+  dance:    { eyes: 'happy', mouth: 'smile', dur: [3000, 4500], lines: 'dance', say: 0.7, anim: 'dance' },
+  scroll:   { eyes: 'down', mouth: 'frown', props: ['phone'], dur: [4000, 7000], lines: 'scroll', say: 0.6 },
+  sleep:    { eyes: 'closed', mouth: 'flat', props: ['zzz'], dur: [8000, 15000], lines: 'sleep', say: 0.4, anim: 'sleep' },
+  flip:     { eyes: 'happy', mouth: 'smile', dur: [900, 900], lines: 'flip', say: 0.6, anim: 'flip' },
+  cry:      { eyes: 'cry', mouth: 'wobble', props: ['tears'], dur: [4000, 6000], lines: 'cry', say: 0.9, anim: 'sob' },
+  rage:     { eyes: 'angry', mouth: 'wide', props: ['steam'], blush: 'rage', dur: [3000, 4000], lines: 'rage', say: 1, anim: 'rage' },
+  facepalm: { eyes: 'closed', mouth: 'frown', props: ['hand'], dur: [2500, 3500], lines: 'facepalm', say: 0.9, anim: 'sad' },
+  shrug:    { eyes: 'tired', mouth: 'flat', props: ['shrug'], dur: [2200, 3000], lines: 'shrug', say: 0.9 },
+  sideeye:  { eyes: 'side', mouth: 'flat', props: ['sweatdrop'], dur: [2500, 4000], lines: 'sideeye', say: 0.8 },
+  melt:     { eyes: 'tired', mouth: 'wobble', props: ['puddle'], dur: [4000, 6000], lines: 'melt', say: 0.8, anim: 'melt' },
+  soul:     { eyes: 'dead', mouth: 'open', props: ['ghost'], dur: [4000, 5500], lines: 'soul', say: 0.9, anim: 'still' },
+  hide:     { eyes: 'side', mouth: 'none', props: ['box'], dur: [5000, 9000], lines: 'hide', say: 0.7 },
+  corner:   { eyes: 'cry', mouth: 'frown', props: ['cloud'], dur: [5000, 8000], lines: 'corner', say: 0.8, anim: 'shrink' },
+  rofl:     { eyes: 'happy', mouth: 'laugh', props: ['tears'], dur: [3000, 4000], lines: 'rofl', say: 1, anim: 'rofl' },
+  faint:    { eyes: 'dead', mouth: 'open', props: ['stars'], dur: [3500, 5000], lines: 'faint', say: 0.8, anim: 'faint' },
+  headbang: { eyes: 'closed', mouth: 'wide', props: ['stars'], dur: [2500, 3500], lines: 'headbang', say: 0.9, anim: 'headbang' },
+  spin:     { eyes: 'spiral', mouth: 'smile', dur: [1800, 2400], lines: 'spin', say: 0.6, anim: 'spin' },
+  stretch:  { eyes: 'closed', mouth: 'open', dur: [1800, 2400], lines: 'stretch', say: 0.6, anim: 'stretch' },
+  pancake:  { eyes: 'dead', mouth: 'flat', dur: [2000, 3000], lines: 'pancake', say: 0.9, anim: 'pancake' },
+  tease:    { eyes: 'happy', mouth: 'tongue', dur: [1800, 2400], lines: 'tease', say: 1, anim: 'wiggle' },
+  flee:     { eyes: 'happy', mouth: 'tongue', walk: true, speed: 150, anim: 'hop' },
+  chase:    { eyes: 'angry', mouth: 'wide', props: ['steam'], blush: 'rage', walk: true, speed: 130, lines: 'chase', say: 1, anim: 'hop' },
+  hug:      { eyes: 'happy', mouth: 'smile', props: ['heart'], dur: [2500, 2500], lines: 'hug', say: 1 },
+  hugged:   { eyes: 'cry', mouth: 'smile', props: ['heart'], dur: [2500, 2500], lines: 'hugged', say: 1 },
+  highfive: { eyes: 'happy', mouth: 'smile', props: ['stars'], dur: [1400, 1400], lines: 'highfive', say: 0.8, anim: 'jump' },
+  steal:    { eyes: 'side', mouth: 'smile', props: ['mug'], dur: [2500, 3000], lines: 'steal', say: 1 },
+  stolen:   { eyes: 'wide', mouth: 'open', props: ['sweatdrop'], dur: [2000, 2000], lines: 'stolen', say: 1, anim: 'rage' },
+  // cãi nhau, đánh nhau, súng, kiếm
+  argue:    { eyes: 'angry', mouth: 'wide', blush: 'rage', anim: 'argue' },
+  brawl:    { eyes: 'angry', mouth: 'wide', anim: 'hidden' },
+  tumble:   { eyes: 'dead', mouth: 'open', anim: 'spin' },
+  flex:     { eyes: 'happy', mouth: 'smile', props: ['stars'], dur: [2600, 2600], anim: 'jump' },
+  watch:    { eyes: 'wide', mouth: 'open', props: ['phone'], lines: 'watch', say: 0.4 },
+  cheer:    { eyes: 'happy', mouth: 'open', anim: 'jump', lines: 'cheer', say: 0.5 },
+  aim:      { eyes: 'side', mouth: 'flat', props: ['gun'] },
+  shoot:    { eyes: 'angry', mouth: 'wide', props: ['gun', 'flash'], anim: 'recoil' },
+  swordReady: { eyes: 'angry', mouth: 'flat', props: ['sword'], anim: 'breathe' },
+  swing:    { eyes: 'angry', mouth: 'wide', props: ['sword', 'swing'], anim: 'lunge' },
+  lecture:  { eyes: 'closed', mouth: 'flat', props: ['scroll'], anim: 'preach' },
+  listen:   { eyes: 'tired', mouth: 'flat' },
+  meditate: { eyes: 'closed', mouth: 'smile', dur: [5000, 8000], lines: 'wisdom', say: 0.7, anim: 'float' },
+  tea:      { eyes: 'closed', mouth: 'smile', props: ['mug'], dur: [4000, 7000], lines: 'wisdom', say: 0.7 },
+  // trạng thái theo session Claude
+  working:  { eyes: 'tired', mouth: 'flat', props: ['laptop'], lines: 'working', say: 1, typing: true },
+  thinking: { eyes: 'side', mouth: 'flat', props: ['qmark'], lines: 'thinking', say: 1, anim: 'breathe' },
+  waiting:  { eyes: 'wide', mouth: 'open', props: ['sign'], lines: 'waiting', say: 1, anim: 'bounce' },
+  done:     { eyes: 'happy', mouth: 'smile', props: ['confetti'], dur: [5000, 5000], lines: 'done', say: 1, anim: 'jump' },
+  error:    { eyes: 'dead', mouth: 'open', props: ['cloud'], dur: [4500, 4500], lines: 'error', say: 1, anim: 'faint' },
+  // tương tác
+  poke:     { eyes: 'wide', mouth: 'open', dur: [900, 900], lines: 'poke', say: 1, anim: 'squash' },
+  angry:    { eyes: 'angry', mouth: 'wide', props: ['steam'], blush: 'rage', dur: [2500, 2500], lines: 'angry', say: 1, anim: 'rage' },
+  dangle:   { eyes: 'wide', mouth: 'open', lines: 'dangle', say: 1, anim: 'dangle' },
+  leave:    { eyes: 'tired', mouth: 'flat', walk: true, lines: 'leave', say: 1, anim: 'hop' },
+  chat:     { eyes: 'tired', mouth: 'flat', dur: [3200, 3200] },
+  // nhảy qua màn hình khác
+  run:      { eyes: 'happy', mouth: 'open', walk: true, speed: 170, anim: 'hop' },
+  windup:   { eyes: 'side', mouth: 'smile', dur: [650, 650], anim: 'windup' },
+  leap:     { eyes: 'happy', mouth: 'open', props: ['stars'], anim: 'leap' },
+  arrive:   { eyes: 'wide', mouth: 'smile', dur: [1300, 1300], lines: 'arrive', say: 0.9, anim: 'squash' },
+};
+
+// Hành động tự do khi không có việc (trọng số)
+const FREE = {
+  idle: 3, walk: 4, sigh: 1.1, coffee: 1, void: 0.6, dance: 0.6, scroll: 1, sleep: 0.5, flip: 0.35,
+  cry: 0.4, rage: 0.3, facepalm: 0.6, shrug: 0.6, sideeye: 0.6, melt: 0.35, soul: 0.3, hide: 0.35,
+  corner: 0.35, rofl: 0.35, faint: 0.2, headbang: 0.3, spin: 0.35, stretch: 0.6, pancake: 0.2,
+};
+// Emoji cảm xúc cho từng hành động (bật lên trên đầu thay cho lời nói)
+const EMOJI = {
+  idle: ['😐', '🫥', '😑', '🥱'], walk: ['🚶', '😮‍💨'], sigh: ['😮‍💨', '🌧️', '😞'], coffee: ['☕', '☕', '🫗'], void: ['🫥', '🌀', '🕳️'],
+  dance: ['🎶', '💃', '🕺', '🪩'], scroll: ['📱', '😩', '📉'], sleep: ['😴', '💤', '🛌'], flip: ['🤸', '✨'], cry: ['😭', '💧', '🥲'],
+  rage: ['💢', '🤬', '🔥', '😤'], facepalm: ['🤦', '😩', '🙃'], shrug: ['🤷', '¯\\_(ツ)_/¯'], sideeye: ['🙄', '👀', '🤨', '😒'],
+  melt: ['🫠', '🥵', '🫠'], soul: ['👻', '💀', '🪦'], hide: ['📦', '🙈', '🫣'], corner: ['🥀', '😔', '🫂'], rofl: ['🤣', '😂', '💀'],
+  faint: ['😵', '💫', '🪦'], headbang: ['😵‍💫', '⌨️', '🔨'], spin: ['🌀', '😵‍💫', '🌪️'], stretch: ['🙆', '✨', '🦴'], pancake: ['🥞', '🫓'],
+  tease: ['😜', '😛', '🤪'], chase: ['💢', '😤', '🏃'], flee: ['😝', '💨'], hug: ['🤗', '❤️', '🫂'], hugged: ['🥹', '💕', '🥺'],
+  highfive: ['🙌', '✋', '🤝'], steal: ['😏', '☕', '🦹'], stolen: ['😱', '☕❓', '😾'], working: ['⌨️', '💻', '🛠️', '🔧'],
+  thinking: ['🤔', '💭', '🧠'], waiting: ['✋', '🙏', '⏳', '👀'], done: ['🎉', '✅', '🥳', '🚀'], error: ['💥', '🔥', '💀', '🧯'],
+  poke: ['❗', '😠', '👉', '❓'], angry: ['💢', '😡', '🤬'], dangle: ['😨', '🙀', '😱'], land: ['💥', '🤕', '😖'],
+  leap: ['🚀', '✨', '🦘'], arrive: ['👋', '🛬', '😎'], argue: ['💢', '🗯️', '😤'], flex: ['💪', '😎', '🏆'],
+  watch: ['📱', '🍿', '👀', '📸'], cheer: ['📣', '🙌', '🔥'], aim: ['🎯', '🤠'], shoot: ['💥', '🔫'], swordReady: ['⚔️', '😠'],
+  swing: ['⚔️', '💥'], lecture: ['📜', '☝️', '🧘'], listen: ['😐', '😴', '🙄'], meditate: ['🧘', '☯️', '🍃'], tea: ['🍵', '🫖'],
+  tumble: ['😵', '💫', '🌪️'], chat: ['💬'], windup: ['😤', '💨'], run: ['💨', '🏃'], fall: ['😱'],
+};
+// Ít khi xuất hiện emoji ở các hành động bình thường
+const EMOTE_P = { idle: 0.15, walk: 0.08, run: 0.3, chat: 0, brawl: 0, fall: 0.3 };
+const TALK = 0.12; // hệ số nói: càng nhỏ càng ít nói
+
+const SAGE_FREE = { idle: 2, walk: 3, meditate: 2.2, tea: 1.5, stretch: 0.5, void: 0.6, sigh: 0.3, facepalm: 0.3, shrug: 0.4 };
+const SESSION_STATES = ['working', 'thinking', 'waiting'];
+
+function weighted(table) {
+  const entries = Object.entries(table);
+  let r = Math.random() * entries.reduce((s, [, w]) => s + w, 0);
+  for (const [k, w] of entries) { if ((r -= w) <= 0) return k; }
+  return entries[0][0];
+}
+
+class Pet {
+  static z = 10;
+  constructor(world, o = {}) {
+    this.world = world;
+    this.type = o.type || pick(Object.keys(CHARS));
+    this.ch = CHARS[this.type];
+    this.pal = { ...this.ch.pal };
+    if (o.hoodie) { this.pal.H = o.hoodie[0]; this.pal.h = o.hoodie[1]; }
+    this.scale = o.scale || 4;
+    this.name = o.name || pick(NAMES);
+    this.owner = o.owner || null;
+    this.offset = o.offset || 0;
+    this.session = null;
+    this.label = o.label || this.name;
+
+    this.el = document.createElement('div');
+    this.el.className = 'pet';
+    this.el.innerHTML = '<div class="bubble"></div><div class="spr"><div class="grow"><canvas></canvas></div></div><div class="tag"></div>';
+    this.canvas = this.el.querySelector('canvas');
+    this.canvas.width = SPR_W; this.canvas.height = SPR_H;
+    this.canvas.style.width = SPR_W * this.scale + 'px';
+    this.canvas.style.height = SPR_H * this.scale + 'px';
+    this.ctx2d = this.canvas.getContext('2d');
+    this.bubble = this.el.querySelector('.bubble');
+    this.tagEl = this.el.querySelector('.tag');
+    this.el._pet = this;
+    world.layer.appendChild(this.el);
+
+    this.w = SPR_W * this.scale; this.h = SPR_H * this.scale;
+    this.footY = (OY + 16) * this.scale;
+    this.x = o.x ?? rand(20, Math.max(40, world.W - this.w - 20));
+    this.y = o.y ?? -this.h;
+    this.vx = 0; this.vy = 0; this.ground = false; this.dir = 1;
+    this.frame = 0; this.nextFrame = 0; this.nextBlink = now() + rand(2000, 5000); this.blinkUntil = 0;
+    this.nextTalk = now() + rand(25000, 60000);
+    this.nextEmote = now() + rand(6000, 15000);
+    this.pokes = []; this.dead = false; this.leaving = false; this.fresh = true;
+    this.setTag();
+    if (o.migrated) {
+      const m = o.migrated;
+      this.fresh = false; this.vx = m.vx; this.vy = m.vy; this.dir = m.dir;
+      this.sessionId = m.sessionId || null;
+      if (m.session) this.session = m.session;
+      this.setTag();
+      this.do('leap');
+      if (m.flying && this.type === 'jet') setTimeout(() => this.startFly({ fuelLeft: m.flying, silent: true }), 0);
+    } else this.do('fall');
+  }
+
+  // bị hất văng (trúng đạn, thua đánh nhau, bị ném trúng)
+  knock(dir, power = 1, after = 'faint') {
+    clearTimeout(this._lt);
+    this.target = null; this.ground = false; this.dropping = false;
+    this.vx = dir * rand(260, 380) * power; this.vy = -rand(480, 620) * power;
+    this.afterLand = after;
+    this.do('tumble');
+  }
+  bump() { this.el.classList.remove('bump'); void this.el.offsetWidth; this.el.classList.add('bump'); }
+
+  canTravel() { return !this.owner && !this.leaving && !this.dead && !this.giantUntil && !this.carriedBy; }
+
+  availableDirs() { return ['left', 'right', 'up', 'down'].filter((d) => this.world.travelPlan(d, this)); }
+
+  // chạy tới chỗ thích hợp rồi nhảy sang màn khác (trái/phải/lên/xuống)
+  travel(dir) {
+    if (!this.canTravel()) return false;
+    const plan = this.world.travelPlan(dir, this);
+    if (!plan) return false;
+    this.walkTo(plan.x, 'run');
+    this.onArrive = () => (dir === 'up' ? this.leapUp() : dir === 'down' ? this.dropDown() : this.leap(dir));
+    return true;
+  }
+
+  leapUp() {
+    this.do('windup');
+    if (Math.random() < 0.3) this.say(line('leapUp')); else this.emote('⬆️');
+    clearTimeout(this._lt);
+    this._lt = setTimeout(() => {
+      if (this.dead || this.dragging) return;
+      this.ground = false; this.vy = -rand(1900, 2050); this.vx = rand(-60, 60);
+      this.world.dust(this, 14); this.do('leap');
+    }, 700);
+  }
+
+  dropDown() {
+    this.do('windup');
+    if (Math.random() < 0.3) this.say(line('dropDown')); else this.emote('⬇️');
+    clearTimeout(this._lt);
+    this._lt = setTimeout(() => {
+      if (this.dead || this.dragging) return;
+      this.ground = false; this.dropping = true; this.vy = -420; this.vx = rand(-40, 40);
+      this.world.dust(this, 8); this.do('leap');
+    }, 550);
+  }
+
+  leap(side) {
+    this.dir = side === 'left' ? -1 : 1;
+    this.do('windup');
+    if (Math.random() < 0.3) this.say(line('leap')); else this.emote(pick(['🚀', '😤', '🦘']));
+    clearTimeout(this._lt);
+    this._lt = setTimeout(() => {
+      if (this.dead || this.dragging) return;
+      this.ground = false;
+      this.vy = -rand(820, 980);
+      this.vx = this.dir * rand(420, 520);
+      this.world.dust(this, 10);
+      this.do('leap');
+    }, 650);
+  }
+
+  migrate(to) {
+    const flyLeft = this.flying ? Math.max(1500, this.flying.fuelEnd - now()) : 0;
+    this.cutRope?.(); this.flying = null;
+    const o = this.world.origin;
+    this.world.migrate(to, {
+      type: this.type, hoodie: [this.pal.H, this.pal.h], name: this.name, label: this.label, scale: this.scale,
+      sessionId: this.sessionId || null, session: this.session,
+      vx: this.vx, vy: this.vy, dir: this.dir, gx: this.x + o.x, gy: this.y + o.y, flying: flyLeft,
+    });
+    this.world.onMigrated?.(this);
+    this.dead = true; this.el.remove(); this.world.pets.delete(this);
+    for (const p of [...this.world.pets]) if (p.owner === this) { p.dead = true; p.el.remove(); this.world.pets.delete(p); }
+  }
+
+  floor() { return this.world.H - this.footY - 2; }
+  get A() { return ACT[this.action] || ACT.idle; }
+  ctx() { return { tool: this.session?.tool, project: this.session?.project || this.label }; }
+  busy() { return this.session && SESSION_STATES.includes(this.session.state); }
+
+  do(name, o = {}) {
+    if (this.dead) return;
+    const a = ACT[name] || ACT.idle;
+    this.action = name;
+    this.until = o.dur ?? (a.dur ? now() + rand(a.dur[0], a.dur[1]) : Infinity);
+    if (o.dur) this.until = now() + o.dur;
+    if (!a.walk) this.target = null;
+    this.applyClass();
+    this.draw();
+    const sayP = o.say === undefined ? (a.say || 0) * TALK : o.say * 0.3;
+    if (a.lines && Math.random() < sayP) { this.say(line(a.lines, this.ctx())); this.nextTalk = now() + rand(25000, 50000); }
+    else if (EMOJI[name] && Math.random() < (EMOTE_P[name] ?? 0.7)) this.emote();
+  }
+
+  walkTo(x, actName = 'walk') {
+    this.target = Math.max(0, Math.min(this.world.W - this.w, x));
+    this.dir = this.target > this.x ? 1 : -1;
+    this.do(actName);
+  }
+
+  applyClass() {
+    const a = this.A;
+    this.el.className = 'pet a-' + this.action + (a.anim ? ' an-' + a.anim : '') +
+      (this.dir < 0 ? ' left' : '') + (this.owner ? ' helper' : '') + (this.dragging ? ' dragging' : '') + (this.giantUntil ? ' giant' : '') +
+      (this.bubbleOn ? ' talking' : '');
+  }
+
+  draw() {
+    const a = this.A;
+    const blinking = now() < this.blinkUntil && (a.eyes === 'tired' || a.eyes === 'wide' || a.eyes === 'side');
+    renderSprite(this.ctx2d, this.ch, this.pal, {
+      eyes: blinking ? 'closed' : a.eyes, mouth: a.mouth, props: a.props || [], blush: a.blush,
+      frame: this.frame, legFrame: (a.walk || this.dragging) && this.frame % 2 === 1,
+    });
+  }
+
+  emote(e) {
+    e = e || pick(EMOJI[this.action] || ['…']);
+    const el = this.emoteEl || (this.emoteEl = Object.assign(document.createElement('div'), { className: 'emote' }));
+    if (!el.isConnected) this.el.appendChild(el);
+    el.textContent = e;
+    el.classList.remove('pop'); void el.offsetWidth; el.classList.add('pop');
+    this.el.style.zIndex = ++Pet.z;
+  }
+
+  say(text, ms) {
+    if (!text) return;
+    // gắn thêm 1 emoji theo cảm xúc hiện tại nếu câu chưa có
+    if (!/\p{Extended_Pictographic}/u.test(text) && EMOJI[this.action] && Math.random() < 0.85) {
+      const e = pick(EMOJI[this.action].filter((x) => x.length <= 4) || ['']);
+      text = Math.random() < 0.5 ? `${e} ${text}` : `${text} ${e}`;
+    }
+    this.bubble.textContent = text;
+    this.bubbleOn = true; this.el.classList.add('talking');
+    this.el.style.zIndex = ++Pet.z;
+    clearTimeout(this._bt);
+    const d = ms || Math.max(2500, Math.min(6000, 1600 + text.length * 70));
+    this._bt = setTimeout(() => { this.bubbleOn = false; this.el.classList.remove('talking'); }, d);
+  }
+
+  setTag() {
+    const s = this.session;
+    let status = '';
+    if (s) status = { working: ' · ⌨ ' + (s.tool || 'đang làm'), thinking: ' · 💭', waiting: ' · ✋ chờ duyệt', done: ' · ✓ xong', error: ' · 💥', idle: '' }[s.state] || '';
+    if (this.owner) status = ' · subagent';
+    this.tagEl.textContent = this.label + status;
+    this.el.classList.toggle('has-tag', !!(s || this.owner));
+  }
+
+  setSession(s) {
+    const prev = this.session?.state;
+    const prevTool = this.session?.tool;
+    this.session = s;
+    this.label = s.project || this.label;
+    this.setTag();
+    if (this.dragging || !this.ground) return;
+    if (s.state !== prev) {
+      if (SESSION_STATES.includes(s.state) || s.state === 'done' || s.state === 'error') { this.inEvent = false; this.do(s.state, { say: 0 }); if (Math.random() < 0.15) this.say(line(s.state, this.ctx())); else this.emote(); }
+      if (s.state === 'error' || s.state === 'done') onSessionEvent(this, s.state);
+      else if (SESSION_STATES.includes(this.action)) this.next();
+    } else if (s.state === 'working' && s.tool !== prevTool && Math.random() < 0.25) {
+      this.emote(pick(EMOJI.working));
+    }
+  }
+
+  next() {
+    if (this.dead || this.leaving || this.inEvent) return;
+    if (this.owner) {
+      if (this.owner.dead || this.owner.leaving) return this.leave();
+      const tx = this.owner.x + this.offset;
+      if (Math.abs(tx - this.x) > 40) return this.walkTo(tx);
+      return this.do(this.owner.busy() ? 'working' : weighted({ idle: 3, coffee: 1, shrug: 0.5, sideeye: 0.5, scroll: 1 }));
+    }
+    if (this.busy()) return this.do(this.session.state);
+    if (Math.random() < 0.08) { const dirs = this.availableDirs(); if (dirs.length && this.travel(pick(dirs))) return; }
+    let choice = weighted(this.freeTable());
+    if (POWER_MOVES[choice] && this[POWER_MOVES[choice]]() !== false) return;
+    if (POWER_MOVES[choice]) choice = 'idle';
+    if (choice === 'walk') return this.walkTo(rand(0, this.world.W - this.w));
+    this.do(choice);
+  }
+
+  leave() {
+    if (this.leaving) return;
+    this.leaving = true;
+    if (Math.random() < 0.4) this.say(line('leave')); else this.emote(pick(['👋', '🫡', '🚪']));
+    this.target = this.x < this.world.W / 2 ? -this.w - 20 : this.world.W + 20;
+    this.dir = this.target > this.x ? 1 : -1;
+    this.action = 'leave'; this.until = Infinity; this.applyClass();
+  }
+
+  remove() {
+    this.cutRope?.();
+    this.dead = true;
+    this.el.remove();
+    this.world.pets.delete(this);
+    for (const p of this.world.pets) if (p.owner === this) p.leave();
+  }
+
+  poke() {
+    const t = now();
+    this.pokes = this.pokes.filter((x) => t - x < 3000);
+    this.pokes.push(t);
+    if (this.giantUntil) { this.emote(pick(['💢', '👊'])); return; }
+    if (this.pokes.length >= 5) { this.pokes = []; if (this.type === 'puff') { this.puffUp(); return; } this.do('angry'); return; }
+    this.do(pick(['poke', 'poke', 'poke', 'sideeye', 'facepalm', 'shrug']), { say: Math.random() < 0.3 ? 1 : 0 });
+    if (!this.bubbleOn) this.emote();
+    this.vy = -260; this.ground = false;
+  }
+
+  update(t, dt) {
+    if (this.dead) return;
+    const W = this.world.W;
+    if (this.carriedBy && this.updateCarried()) {
+      this.el.style.transform = `translate(${Math.round(this.x)}px, ${Math.round(this.y)}px)`;
+      if (t >= this.nextFrame) { this.frame++; this.nextFrame = t + 200; this.draw(); }
+      return;
+    }
+    if (this.dragging) {
+      // vị trí do chuột điều khiển
+    } else if (!this.ground) {
+      if (this.rope) this.updateRope(t, dt);
+      else if (this.flying) this.updateFly(t, dt);
+      else { this.vy += 1800 * dt; this.x += this.vx * dt; this.y += this.vy * dt; }
+      if (this.dead) return;
+      const wd = this.world, cx = this.x + this.w / 2, cy = this.y + this.footY * 0.6, go = this.canTravel();
+      // bay ra khỏi mép trái/phải/trên mà bên đó có màn khác → chuyển sang màn đó
+      if (go && this.action !== 'fall' && (cx < 0 || cx > W || (cy < 0 && this.vy < 0))) { const t = wd.findTarget(cx, cy); if (t != null) return this.migrate(t); }
+      if (this.x < 0 && !(go && wd.findTarget(-30, cy) != null)) { this.x = 0; this.vx = -this.vx * 0.5; }
+      if (this.x > W - this.w && !(go && wd.findTarget(W + 30, cy) != null)) { this.x = W - this.w; this.vx = -this.vx * 0.5; }
+      if (!this.flying && this.y < -this.h * 3 && wd.findTarget(cx, -60) == null) this.vy = Math.max(this.vy, 0);
+      if (this.flying && this.y < 4 && wd.findTarget(cx, -60) == null) { this.y = 4; this.vy = Math.max(this.vy, 0); }
+      const fl = this.floor();
+      // rơi xuyên sàn khi đang thả xuống, hoặc bị ném mạnh xuống, và bên dưới có màn
+      const below = this.y >= fl && this.vy >= 0 && go && (this.dropping || (this.action === 'dangle' && this.vy > 900)) ? wd.findBelow(cx) : null;
+      if (below != null) {
+        this.dropping = true;
+        if (this.y + this.footY * 0.5 > wd.H) return this.migrate(below);
+      } else if (this.y >= fl && this.vy >= 0) {
+        this.y = fl; this.dropping = false;
+        if (this.rope) this.cutRope();
+        if (this.flying && this.vy < 260) { this.stopFly(); this.vy = 0; }
+        if (this.vy > 520) { this.vy = -this.vy * 0.35; this.vx *= 0.7; }
+        else {
+          this.vy = 0; this.vx = 0; this.ground = true;
+          const g0 = this.el.querySelector('.grow'); if (g0) g0.style.rotate = '';
+          if (this.action === 'leap' && this.type === 'hook' && !this.afterLand) { this.world.dust(this, 10); this.do('land', { say: 0 }); this.emote(pick(['😎', '🤸', '✨'])); }
+          else if (this.action === 'leap') { this.world.dust(this, 12); this.do('arrive'); }
+          else if (this.action === 'fly' || this.action === 'fuelOut') { this.world.dust(this, 10); if (this.afterLand) { const al = this.afterLand; this.afterLand = null; this.do(al); } else this.do('land', { say: 0 }); }
+          else if (this.afterLand) { const al = this.afterLand; this.afterLand = null; this.world.dust(this, 8); this.do(al); }
+          else if (this.action === 'fall' || this.action === 'dangle') {
+            if (this.fresh) { this.fresh = false; this.do('land', { say: 0 }); if (Math.random() < 0.35) this.say(line(this.owner ? 'helper' : 'spawn')); else this.emote(pick(['👋', '😪', '🫡', '🥱'])); }
+            else this.do(Math.random() < 0.25 ? 'pancake' : 'land');
+          }
+          else if (!this.inEvent && !this.giantUntil && this.until > now() + 100000) this.do('land', { say: 0 });
+        }
+      }
+    } else {
+      this.y = this.floor();
+      const a = this.A;
+      if (a.walk && this.target != null) {
+        const dx = this.target - this.x, step = (a.speed || 55) * dt;
+        this.dir = dx >= 0 ? 1 : -1;
+        if (Math.abs(dx) <= step) {
+          this.x = this.target; this.target = null;
+          if (this.action === 'leave') { this.remove(); return; }
+          this.onArrive?.(); this.onArrive = null;
+          this.next();
+        } else this.x += Math.sign(dx) * step;
+      }
+      if (t >= this.until) this.next();
+      if (t > this.nextEmote && !this.inEvent && !this.bubbleOn) {
+        this.nextEmote = t + rand(9000, 20000);
+        if (EMOJI[this.action] && Math.random() < 0.6) this.emote();
+      }
+      if (a.lines && t > this.nextTalk && !this.bubbleOn && !this.inEvent && Math.random() < 0.2) {
+        let key = a.lines;
+        if (this.type === 'sage' && (key === 'idle' || key === 'walk')) key = 'wisdom';
+        const tl = key === 'idle' && Math.random() < 0.3 ? timeLines() : [];
+        this.say(tl.length ? pick(tl) : line(key, this.ctx()));
+        this.nextTalk = t + rand(45000, 100000);
+      } else if (t > this.nextTalk) this.nextTalk = t + rand(10000, 20000);
+    }
+    if (t >= this.nextBlink) { this.blinkUntil = t + 160; this.nextBlink = t + rand(2500, 6000); }
+    if (t >= this.nextFrame) {
+      this.frame++;
+      this.nextFrame = t + (this.A.walk ? 160 : this.A.typing ? 140 : 260);
+      this.draw();
+    }
+    const flipNeeded = this.dir < 0;
+    if (flipNeeded !== this.el.classList.contains('left')) this.applyClass();
+    this.el.style.transform = `translate(${Math.round(this.x)}px, ${Math.round(this.y)}px)`;
+  }
+}
+
+</script>
+<script>
+// Các "tình huống" nhiều bước: cãi nhau, đánh nhau, đấu kiếm, đấu súng, Thầy giảng đạo, khán giả hóng chuyện.
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+const ok = (...ps) => ps.every((p) => p && !p.dead && !p.dragging && !p.leaving);
+const HOLD = 600000; // giữ nguyên hành động cho tới khi kịch bản đổi
+
+function face(a, b) { a.dir = b.x >= a.x ? 1 : -1; b.dir = -a.dir; a.applyClass(); b.applyClass(); }
+function available(p) {
+  const CHILL = ['idle', 'walk', 'coffee', 'void', 'scroll', 'shrug', 'sideeye', 'stretch', 'cry', 'corner', 'sigh', 'meditate', 'tea', 'dance'];
+  return p.ground && !p.dragging && !p.leaving && !p.inEvent && !p.busy() && !p.owner && CHILL.includes(p.action);
+}
+function nearest(a, list) {
+  return list.filter((p) => p !== a).sort((p, q) => Math.abs(p.x - a.x) - Math.abs(q.x - a.x))[0];
+}
+
+// Chạy một kịch bản với các thỏ tham gia; tự giải phóng khi xong hoặc khi bị chuột can thiệp
+async function scene(ps, fn) {
+  ps.forEach((p) => (p.inEvent = true));
+  try { await fn(); } catch (e) { console.warn(e); }
+  finally {
+    for (const p of ps) {
+      p.inEvent = false;
+      if (!p.dead && p.ground && !p.dragging && p.until > performance.now() + HOLD / 2) p.until = performance.now() + rand(300, 1200);
+    }
+  }
+}
+
+// a đi tới cạnh b (cách gap px), chờ tới nơi
+async function approach(a, b, gap = 70) {
+  const side = a.x < b.x ? -1 : 1;
+  const tx = b.x + side * gap;
+  if (Math.abs(tx - a.x) < 14) return;
+  b.do(b.action === 'walk' ? 'idle' : b.action, { dur: HOLD });
+  a.walkTo(tx);
+  const t0 = performance.now();
+  while (ok(a, b) && a.target != null && performance.now() - t0 < 7000) await sleep(80);
+}
+
+// Mấy đứa rảnh xung quanh kéo tới hóng
+function gatherCrowd(x, exclude) {
+  const crowd = [...world.pets].filter((p) => available(p) && !exclude.includes(p) && Math.abs(p.x - x) < 800).slice(0, 3);
+  crowd.forEach((p, i) => {
+    p.inEvent = true;
+    const side = p.x < x ? -1 : 1;
+    p.walkTo(x + side * rand(140, 220));
+    p.onArrive = () => { if (!p.dead) { p.dir = x > p.x ? 1 : -1; p.do(Math.random() < 0.55 ? 'watch' : 'cheer', { dur: HOLD, say: 0.25 }); } };
+  });
+  return crowd;
+}
+function releaseCrowd(crowd) {
+  crowd.forEach((p) => { if (!p.dead) { p.inEvent = false; p.onArrive = null; p.do(pick(['idle', 'shrug', 'rofl', 'sideeye']), { say: 0.5 }); } });
+}
+
+// ---------- cãi nhau ----------
+async function argue(a, b) {
+  await scene([a, b], async () => {
+    const sc = { ...pick(ARGUMENTS) };
+    sc.lines = sc.lines.slice(0, 4);
+    a.emote('🗯️');
+    await approach(a, b, 75);
+    if (!ok(a, b)) return;
+    face(a, b);
+    a.do('argue', { dur: HOLD }); b.do('argue', { dur: HOLD });
+    const crowd = gatherCrowd((a.x + b.x) / 2, [a, b]);
+    let mediated = false;
+    for (let i = 0; i < sc.lines.length; i++) {
+      if (!ok(a, b)) { releaseCrowd(crowd); return; }
+      const sp = i % 2 ? b : a;
+      sp.say(sc.lines[i], 2300); sp.bump();
+      await sleep(1900 + sc.lines[i].length * 18);
+      // giữa chừng có đứa (ưu tiên Thầy) vào can
+      if (i === 3 && !mediated && Math.random() < 0.35) {
+        const m = [...world.pets].find((p) => available(p) && p.type === 'sage') || crowd[0];
+        if (m && !m.dead) {
+          mediated = true;
+          m.say(line('mediate'), 2500); await sleep(2200);
+          if (Math.random() < 0.5) { a.say(line('makeup')); await sleep(800); a.do('hug'); b.do('hugged'); releaseCrowd(crowd); return; }
+          a.say('ông im đi!', 1500); b.say('đúng, im!', 1500); m.do('facepalm'); await sleep(1200);
+        }
+      }
+    }
+    let end = sc.end === 'any' ? pick(['fight', 'fight', 'makeup', 'walk']) : sc.end;
+    if (end === 'fight') {
+      releaseCrowd(crowd);
+      a.inEvent = b.inEvent = false;
+      return pick([brawl, brawl, duel, shootout])(a, b);
+    }
+    if (end === 'makeup') { a.say(line('makeup')); await sleep(1200); face(a, b); a.do('hug'); b.do('hugged'); }
+    else { a.do('sigh', { say: 0 }); a.say('thôi. nói chuyện với tường còn hơn.'); b.do('rage'); }
+    releaseCrowd(crowd);
+  });
+}
+
+// ---------- đánh nhau: đám mây bụi kiểu hoạt hình ----------
+async function brawl(a, b) {
+  await scene([a, b], async () => {
+    a.emote(pick(['💢', '😤', '🥊']));
+    await approach(a, b, 40);
+    if (!ok(a, b)) return;
+    face(a, b);
+    b.emote(pick(['💢', '😠', '🥊'])); await sleep(700);
+    const mx = (a.x + b.x) / 2 + a.w / 2, fy = world.H - 4;
+    const crowd = gatherCrowd(mx - a.w / 2, [a, b]);
+    a.do('brawl', { dur: HOLD }); b.do('brawl', { dur: HOLD });
+    const cloud = makeBrawlCloud(mx, fy, [a.pal.H || a.pal[a.ch.skin], b.pal.H || b.pal[b.ch.skin], a.pal[a.ch.skin], b.pal[b.ch.skin]]);
+    await sleep(rand(3200, 4600));
+    cloud.remove();
+    if (a.dead || b.dead) { releaseCrowd(crowd); return; }
+    await finish(a, b, crowd);
+  });
+}
+
+// kết thúc trận: thắng/thua/hoà/làm hoà
+async function finish(a, b, crowd, winLines = 'win') {
+  const r = Math.random();
+  if (r < 0.15) {
+    a.do('idle'); b.do('idle'); a.say(line('makeup')); await sleep(900); face(a, b); a.do('hug'); b.do('hugged');
+  } else if (r < 0.3) {
+    a.knock(-1 * (b.x > a.x ? 1 : -1), 0.8); b.knock(b.x > a.x ? 1 : -1, 0.8);
+    await sleep(900); a.say(line('draw'));
+  } else {
+    const [w, l] = Math.random() < 0.5 ? [a, b] : [b, a];
+    l.knock(l.x >= w.x ? 1 : -1, 1.1, Math.random() < 0.3 ? 'pancake' : 'faint');
+    w.do('flex'); if (Math.random() < 0.5) w.say(line(winLines)); else w.emote();
+    await sleep(1400); if (!l.dead) l.emote(pick(['😵', '🤕', '🏳️']));
+    l.grudge = Math.random() < 0.6 ? w : null;
+    if (l.type === 'puff' && Math.random() < 0.7) setTimeout(() => { if (!l.dead && l.ground) { l.inEvent = false; l.puffUp(); } }, 3000);
+  }
+  await sleep(1200);
+  releaseCrowd(crowd || []);
+}
+
+function makeBrawlCloud(cx, fy, colors) {
+  const el = document.createElement('div');
+  el.className = 'brawl';
+  el.style.left = cx + 'px'; el.style.top = fy + 'px';
+  for (let i = 0; i < 9; i++) {
+    const pf = document.createElement('div');
+    pf.className = 'puff';
+    const sz = 34 + Math.random() * 30;
+    pf.style.cssText = `width:${sz}px;height:${sz}px;left:${(Math.random() * 2 - 1) * 45 - sz / 2}px;top:${-sz - Math.random() * 55}px;animation-delay:${(Math.random() * 0.3).toFixed(2)}s`;
+    el.appendChild(pf);
+  }
+  world.layer.appendChild(el);
+  const words = ['BỐP!', 'BỤP!', 'ÁI!', '#@!%', 'UỲNH!', 'CHÁT!', 'Á Á!', 'BỐC!', '*&%$!'];
+  const timer = setInterval(() => {
+    if (!el.isConnected) return clearInterval(timer);
+    const w = document.createElement('div');
+    w.className = 'pow'; w.textContent = pick(words);
+    w.style.left = (Math.random() * 2 - 1) * 70 + 'px'; w.style.top = -60 - Math.random() * 70 + 'px';
+    w.style.setProperty('--r', (Math.random() * 40 - 20).toFixed(0) + 'deg');
+    el.appendChild(w); setTimeout(() => w.remove(), 650);
+    // tay chân văng ra khỏi đám bụi
+    const limb = document.createElement('div');
+    limb.className = 'limb'; limb.style.background = pick(colors);
+    limb.style.left = (Math.random() * 2 - 1) * 40 + 'px'; limb.style.top = -20 - Math.random() * 60 + 'px';
+    limb.style.setProperty('--dx', (Math.random() * 2 - 1) * 40 + 'px');
+    el.appendChild(limb); setTimeout(() => limb.remove(), 300);
+  }, 170);
+  return el;
+}
+
+// ---------- đấu kiếm ----------
+async function duel(a, b) {
+  await scene([a, b], async () => {
+    a.emote('⚔️');
+    await approach(a, b, 95);
+    if (!ok(a, b)) return;
+    face(a, b);
+    a.do('swordReady', { dur: HOLD }); b.do('swordReady', { dur: HOLD });
+    b.emote('⚔️');
+    const crowd = gatherCrowd((a.x + b.x) / 2, [a, b]);
+    await sleep(1100);
+    const rounds = 3 + Math.floor(Math.random() * 3);
+    for (let k = 0; k < rounds; k++) {
+      if (!ok(a, b)) { releaseCrowd(crowd); return; }
+      const atk = k % 2 ? b : a;
+      atk.do('swing', { dur: HOLD });
+      await sleep(180);
+      clash((a.x + b.x) / 2 + a.w / 2, a.y + a.footY - 40);
+      await sleep(420);
+      atk.do('swordReady', { dur: HOLD });
+      await sleep(250);
+    }
+    if (!ok(a, b)) { releaseCrowd(crowd); return; }
+    const [w, l] = Math.random() < 0.5 ? [a, b] : [b, a];
+    w.do('swing', { dur: HOLD }); await sleep(200);
+    clash((a.x + b.x) / 2 + a.w / 2, a.y + a.footY - 40, true);
+    flyingSword(l);
+    l.knock(l.x >= w.x ? 1 : -1, 1.2);
+    await sleep(500);
+    w.do('flex'); if (Math.random() < 0.5) w.say(line('duelWin')); else w.emote('🏆');
+    await sleep(1500); if (!l.dead) l.emote(pick(['😵', '🤕', '🏳️']));
+    l.grudge = Math.random() < 0.5 ? w : null;
+    await sleep(1000);
+    releaseCrowd(crowd);
+  });
+}
+
+function clash(x, y, big) {
+  const el = document.createElement('div');
+  el.className = 'clash' + (big ? ' big' : '');
+  el.style.left = x + 'px'; el.style.top = y + 'px';
+  el.innerHTML = `<span>${pick(['KENG!', 'CHOANG!', 'XOẸT!', 'KENG KENG!'])}</span>`;
+  for (let i = 0; i < 8; i++) {
+    const s = document.createElement('i');
+    const ang = Math.random() * Math.PI * 2, d = 18 + Math.random() * 26;
+    s.style.setProperty('--dx', Math.cos(ang) * d + 'px'); s.style.setProperty('--dy', Math.sin(ang) * d + 'px');
+    el.appendChild(s);
+  }
+  world.layer.appendChild(el);
+  setTimeout(() => el.remove(), 520);
+}
+
+function flyingSword(p) {
+  const el = document.createElement('div');
+  el.className = 'flysword';
+  el.style.left = p.x + p.w / 2 + 'px'; el.style.top = p.y + p.footY - 50 + 'px';
+  el.style.setProperty('--dx', (Math.random() < 0.5 ? -1 : 1) * rand(80, 160) + 'px');
+  world.layer.appendChild(el);
+  setTimeout(() => el.remove(), 1100);
+}
+
+// ---------- đấu súng (súng đồ chơi) ----------
+async function shootout(a, b) {
+  await scene([a, b], async () => {
+    face(a, b);
+    a.emote('🤠');
+    // lùi ra xa nhau
+    const mid = (a.x + b.x) / 2;
+    const left = a.x < b.x ? a : b, right = left === a ? b : a;
+    left.walkTo(Math.max(0, mid - rand(180, 260)));
+    right.walkTo(Math.min(world.W - right.w, mid + rand(180, 260)));
+    const t0 = performance.now();
+    while (ok(a, b) && (a.target != null || b.target != null) && performance.now() - t0 < 6000) await sleep(80);
+    if (!ok(a, b)) return;
+    face(a, b);
+    a.do('aim', { dur: HOLD }); b.do('aim', { dur: HOLD });
+    const crowd = gatherCrowd(mid, [a, b]);
+    tumbleweed();
+    b.emote('1️⃣'); await sleep(1000);
+    a.emote('2️⃣'); await sleep(1000 + Math.random() * 900);
+    if (!ok(a, b)) { releaseCrowd(crowd); return; }
+    const [sh, tg] = Math.random() < 0.5 ? [a, b] : [b, a];
+    const miss = Math.random() < 0.15;
+    sh.do('shoot', { dur: HOLD }); sh.emote('💥');
+    const hit = await fire(sh, tg, miss);
+    await sleep(200);
+    sh.do('aim', { dur: HOLD });
+    if (!hit) {
+      if (ok(tg)) { tg.do('shoot', { dur: HOLD }); await fire(tg, sh, true); }
+      await sleep(600); a.do('shrug', { say: 0 }); b.do('shrug', { say: 0 }); a.emote('🤷'); b.emote('🙃');
+    } else {
+      await sleep(700); sh.do('flex'); if (Math.random() < 0.5) sh.say(line('shooterWin')); else sh.emote(pick(['😎', '🤠', '💨']));
+      tg.grudge = Math.random() < 0.6 ? sh : null;
+    }
+    await sleep(1600);
+    releaseCrowd(crowd);
+  });
+}
+
+// Bắn liên tục vào đứa gần nhất (từ menu)
+async function sprayAt(a, b) {
+  await scene([a], async () => {
+    face(a, b);
+    a.do('aim', { dur: HOLD }); a.emote('🎯');
+    await sleep(400);
+    for (let i = 0; i < 3 && ok(a); i++) {
+      a.do('shoot', { dur: HOLD });
+      if (ok(b)) fire(a, b, Math.random() < 0.3);
+      await sleep(260); a.do('aim', { dur: HOLD }); await sleep(220);
+    }
+    await sleep(500);
+    a.do('flex');
+  });
+}
+
+// Đạn xốp bay ngang; trúng thì hất văng mục tiêu
+function fire(sh, tg, forceMiss) {
+  return new Promise((resolve) => {
+    const el = document.createElement('div');
+    el.className = 'bullet';
+    const dir = tg.x >= sh.x ? 1 : -1;
+    let x = sh.x + sh.w / 2 + dir * 13 * sh.scale, y = sh.y + (OY + 11.5) * sh.scale;
+    const vy = forceMiss ? -rand(80, 160) : 0;
+    el.style.left = x + 'px'; el.style.top = y + 'px';
+    world.layer.appendChild(el);
+    let last = performance.now();
+    const step = (t) => {
+      const dt = Math.min(0.05, (t - last) / 1000); last = t;
+      x += dir * 1100 * dt; y += vy * dt;
+      el.style.left = x + 'px'; el.style.top = y + 'px';
+      const hitbox = !tg.dead && x > tg.x + tg.w * 0.3 && x < tg.x + tg.w * 0.7 && y > tg.y + OY * tg.scale && y < tg.y + tg.footY;
+      if (hitbox && !forceMiss) {
+        el.remove(); impact(x, y);
+        tg.knock(dir, 0.9); if (Math.random() < 0.4) tg.say(line('shot')); else tg.emote(pick(['😵', '🤕', '💫']));
+        return resolve(true);
+      }
+      if (x < -50 || x > world.W + 50) { el.remove(); return resolve(false); }
+      requestAnimationFrame(step);
+    };
+    requestAnimationFrame(step);
+  });
+}
+function impact(x, y) {
+  const el = document.createElement('div');
+  el.className = 'clash'; el.style.left = x + 'px'; el.style.top = y + 'px';
+  el.innerHTML = `<span>${pick(['BỤP!', 'PẶC!', 'TRÚNG!'])}</span>`;
+  world.layer.appendChild(el); setTimeout(() => el.remove(), 450);
+}
+function tumbleweed() {
+  const el = document.createElement('div');
+  el.className = 'tumbleweed';
+  const fromLeft = Math.random() < 0.5;
+  el.style.top = world.H - 26 + 'px';
+  el.style.setProperty('--from', fromLeft ? '-40px' : world.W + 40 + 'px');
+  el.style.setProperty('--to', fromLeft ? world.W + 40 + 'px' : '-40px');
+  world.layer.appendChild(el); setTimeout(() => el.remove(), 4200);
+}
+
+// ---------- Thầy Thỏ giảng đạo ----------
+async function lecture(sage, b) {
+  await scene([sage, b], async () => {
+    sage.emote('☝️');
+    await approach(sage, b, 80);
+    if (!ok(sage, b)) return;
+    face(sage, b);
+    sage.do('lecture', { dur: HOLD }); b.do('listen', { dur: HOLD });
+    const lec = pick(LECTURES).slice(0, 3);
+    for (let i = 0; i < lec.length; i++) {
+      if (!ok(sage, b)) return;
+      sage.say(lec[i], 2700); sage.bump();
+      await sleep(2300 + lec[i].length * 22);
+      if (i === 1) b.do(pick(['sleep', 'sideeye', 'facepalm', 'soul', 'void', 'listen']), { dur: HOLD, say: 0 });
+    }
+    if (!ok(sage, b)) return;
+    const r = Math.random();
+    if (r < 0.15) {
+      b.do('cheer', { say: 0 }); b.say(line('lectureClap'));
+      sage.do('tea', { say: 0 }); await sleep(800); sage.say('tốt. giờ đi rửa ly cho ta.');
+    } else if (r < 0.3) {
+      b.say(line('lectureFlee'));
+      b.walkTo(b.x + (b.x < sage.x ? -1 : 1) * rand(300, 500), 'run');
+      b.inEvent = false; await sleep(500); sage.do('sigh'); sage.say('tuổi trẻ…');
+    } else if (r < 0.42) {
+      b.do('argue', { dur: HOLD }); b.say(line('lectureArgue'));
+      await sleep(2200); sage.say('con dám cãi ta?'); await sleep(1600);
+      sage.inEvent = b.inEvent = false;
+      return pick([duel, brawl, argue])(sage, b);
+    } else {
+      b.do('idle', { say: 0 }); b.say(line('lectureReply'));
+      await sleep(1500); sage.do('meditate', { say: 0 }); sage.say('ta biết con chưa hiểu. ta cũng vậy.');
+    }
+    await sleep(1200);
+  });
+}
+
+// ---------- chọn tình huống ngẫu nhiên ----------
+function social() {
+  const ps = [...world.pets].filter(available);
+  if (ps.length < 2) return;
+
+  // trả thù
+  const g = ps.find((p) => p.grudge && !p.grudge.dead && available(p.grudge));
+  if (g && Math.random() < 0.4) {
+    const t = g.grudge; g.grudge = null; g.emote(pick(['😠', '💢', '😤']));
+    return pick([brawl, duel, shootout, argue])(g, t);
+  }
+
+  const a = pick(ps), b = nearest(a, ps);
+  if (!b) return;
+  const sage = a.type === 'sage' ? a : b.type === 'sage' ? b : null;
+  if (sage && Math.random() < 0.3) return lecture(sage, sage === a ? b : a);
+
+  if ((b.action === 'cry' || b.action === 'corner') && Math.random() < 0.7) return goTo(a, b, () => { face(a, b); a.do('hug'); b.do('hugged'); });
+  if (b.action === 'coffee' && Math.random() < 0.5) return goTo(a, b, () => { face(a, b); a.do('steal'); b.do('stolen'); setTimeout(() => ok(b) && b.ground && b.do('rage'), 2000); });
+
+  const close = Math.abs(a.x - b.x) < 220;
+  const r = Math.random();
+  if (r < 0.38 && close && Math.random() < 0.8) {
+    face(a, b); a.do('chat'); b.do('chat');
+    const [e1, e2] = pick([['👋', '🫡'], ['☕?', '👍'], ['🍜?', '🤤'], ['😮‍💨', '🫂'], ['🐛', '😱'], ['🚀', '🙄'], ['🎉', '🥳'], ['💤', '💤']]);
+    a.emote(e1); setTimeout(() => !b.dead && b.emote(e2), 1100);
+  } else if (r < 0.38 && close) {
+    const pair = pick(CHATS); face(a, b);
+    a.do('chat'); b.do('chat'); a.say(pair[0], 2600);
+    setTimeout(() => !b.dead && b.say(pair[1], 2800), 1500);
+  } else if (r < 0.48) goTo(a, b, () => { face(a, b); a.do('highfive', { say: 0 }); b.do('highfive', { say: 0 }); a.emote('🙌'); b.emote('🙌'); });
+  else if (r < 0.6) teaseChase(a, b);
+  else if (r < 0.7 && close) { face(a, b); a.do('sideeye', { say: 0 }); b.do('sideeye', { say: 0 }); a.emote('🤨'); setTimeout(() => !b.dead && b.emote('😒'), 1100); }
+  else if (r < 0.8 && ['hook', 'jet', 'puff'].includes(a.type) && Math.random() < 0.6) powerAttack(a, b);
+  else if (r < 0.8) argue(a, b);
+  else if (r < 0.88) (['hook', 'jet', 'puff'].includes(a.type) && Math.random() < 0.5 ? powerAttack : brawl)(a, b);
+  else if (r < 0.94) duel(a, b);
+  else shootout(a, b);
+}
+
+function teaseChase(a, b) {
+  face(a, b); a.do('tease', { say: 0 });
+  a.emote(pick(['😜', '😛']));
+  setTimeout(() => {
+    if (!ok(a, b)) return;
+    const away = a.x < b.x ? -1 : 1;
+    a.walkTo(a.x + away * rand(250, 450), 'flee');
+    b.walkTo(a.x + away * rand(150, 300), 'chase');
+    b.onArrive = () => { b.do('rage'); };
+    a.onArrive = () => { a.do(Math.random() < 0.5 ? 'rofl' : 'tease'); };
+  }, 1800);
+}
+
+function goTo(a, b, cb) {
+  const side = a.x < b.x ? -1 : 1;
+  const tx = b.x + side * (b.w * 0.55);
+  if (Math.abs(tx - a.x) < 12) return cb();
+  b.do('chat', { dur: 8000 });
+  a.walkTo(tx);
+  a.onArrive = () => { if (!b.dead && b.ground) cb(); };
+}
+
+// ---------- ném trúng nhau (bowling) ----------
+function collisions(t) {
+  for (const p of world.pets) {
+    if (p.ground || p.dead || !(p.action === 'dangle' || p.action === 'tumble')) continue;
+    if (Math.abs(p.vx) + Math.abs(p.vy) < 650) continue;
+    for (const q of world.pets) {
+      if (q === p || !q.ground || q.dead || q.owner || (q.knockedUntil || 0) > t) continue;
+      if (Math.abs(p.x - q.x) < q.w * 0.35 && Math.abs(p.y + p.footY - (q.y + q.footY)) < 60) {
+        q.knockedUntil = t + 1500;
+        q.inEvent = false;
+        q.knock(Math.sign(p.vx) || 1, 0.9);
+        q.emote(pick(['😡', '🤕', '💢']));
+        if (p.action === 'dangle') p.emote(pick(['🎳', '💥']));
+        q.grudge = p;
+      }
+    }
+  }
+}
+
+// ---------- phản ứng theo session ----------
+function onSessionEvent(p, kind) {
+  const near = [...world.pets].filter((q) => q !== p && available(q) && Math.abs(q.x - p.x) < 500);
+  if (!near.length) return;
+  const q = pick(near);
+  if (kind === 'error') {
+    setTimeout(() => { if (ok(q)) { q.dir = p.x > q.x ? 1 : -1; q.do('rofl', { say: 0 }); if (Math.random() < 0.4) q.say(line('mock')); else q.emote('🤣'); } }, 1200);
+    setTimeout(() => { if (ok(p)) p.emote(pick(['😒', '😤', '🙄'])); }, 3000);
+  } else if (kind === 'done') {
+    setTimeout(() => { if (ok(q)) { q.do('cheer', { say: 0 }); q.emote(pick(['🎉', '👏', '🥳'])); } }, 900);
+  }
+}
+
+</script>
+<script>
+// Siêu năng lực của 3 thỏ siêu anh hùng (nhân vật gốc):
+//  - Thỏ Dây Móc (hook): bắn móc lên mép màn hình / mép cửa sổ app / thỏ khác rồi đu như con lắc
+//  - Thỏ Phản Lực (jet): bay bằng ba lô phản lực, có xăng, hết xăng thì rơi
+//  - Thỏ Phình To (puff): nổi giận phình to gấp 2.6, dậm chân rung màn, nhấc thỏ khác ném đi
+
+Object.assign(ACT, {
+  aimRope:   { eyes: 'side', mouth: 'flat', props: ['rope-hand'] },
+  swinging:  { eyes: 'happy', mouth: 'open', props: ['rope-hand'] },
+  fly:       { eyes: 'happy', mouth: 'smile', props: ['jetflame'] },
+  fuelOut:   { eyes: 'wide', mouth: 'open', anim: 'spin' },
+  giant:     { eyes: 'angry', mouth: 'wide', props: ['steam'], blush: 'rage', anim: 'giant' },
+  giantWalk: { eyes: 'angry', mouth: 'wide', props: ['steam'], blush: 'rage', walk: true, speed: 75, anim: 'stomp' },
+  carry:     { eyes: 'angry', mouth: 'smile', props: ['steam'], blush: 'rage' },
+  carried:   { eyes: 'wide', mouth: 'open', anim: 'dangle' },
+  deflate:   { eyes: 'cry', mouth: 'wobble', props: ['sweatdrop'], dur: [2500, 3500], anim: 'shrink' },
+});
+Object.assign(EMOJI, {
+  aimRope: ['🪝', '🎯'], swinging: ['🪝', '🤸', '😆', '🌬️'], fly: ['🚀', '😎', '✈️', '🛩️'], fuelOut: ['⛽', '😱'],
+  giant: ['💢', '😤', '👊', '🌋'], giantWalk: ['💢', '👣'], carry: ['😈', '💪'], carried: ['😱', '🙀', '🆘'], deflate: ['😳', '🫣', '🎈'],
+});
+Object.assign(LINES, {
+  swing: ['đu thôi!', 'ai cần thang máy.', 'bám chắc vào…', 'giờ này đi bộ là lạc hậu.'],
+  fly: ['cất cánh!', 'tầm nhìn đẹp. đời vẫn xấu.', 'xăng đắt quá.', 'trên này không có Slack.'],
+  fuelOut: ['hết xăng!!', 'quên đổ xăng…', 'đáng lẽ phải sạc pin…'],
+  puff: ['TUI. ĐANG. RẤT. BÌNH. TĨNH.', 'ĐỪNG CHỌC NỮA!', 'AI. LÀM. VỠ. BUILD?'],
+  deflate: ['…xin lỗi. tui hơi quá.', 'xì hơi rồi. ngại ghê.', 'tui không nhớ gì hết.'],
+  grabbed: ['THẢ TUI RA!', 'ơ ơ ơ', 'tui nhẹ lắm, đừng ném!'],
+  bomb: ['bánh mì giao tận nơi!', 'ăn sáng chưa?', 'bữa sáng từ trên trời!'],
+});
+const HERO_NAMES = { hook: ['Móc', 'Đu Dây'], jet: ['Phản Lực', 'Bay Cao'], puff: ['Bánh Bao', 'Phồng'] };
+const HERO_FREE = { hook: { swing: 3.2 }, jet: { fly: 3.2 }, puff: { puffUp: 0.15 } };
+const POWER_MOVES = { swing: 'swing', fly: 'startFly', puffUp: 'puffUp' };
+const GIANT = 2.6;
+
+// ---------- chọn bảng hành động tự do theo nhân vật ----------
+Pet.prototype.freeTable = function () {
+  if (this.type === 'sage') return SAGE_FREE;
+  return HERO_FREE[this.type] ? { ...FREE, ...HERO_FREE[this.type] } : FREE;
+};
+
+// ---------- DÂY MÓC ----------
+Pet.prototype.handPos = function () {
+  return { x: this.x + this.w / 2, y: this.y + (OY + 3) * this.scale };
+};
+
+// Tìm điểm móc phía trên, hơi lệch về hướng muốn đu
+Pet.prototype.findAnchor = function (dir, preferX) {
+  const w = this.world, h = this.handPos();
+  const cands = [];
+  const wantX = preferX ?? h.x + dir * rand(120, 320);
+  // mép trên màn hình
+  cands.push({ x: Math.max(20, Math.min(w.W - 20, wantX)), y: 3, kind: 'screen' });
+  // góc màn hình
+  cands.push({ x: 4, y: 3, kind: 'corner' }, { x: w.W - 4, y: 3, kind: 'corner' });
+  // mép trên + góc của các cửa sổ app khác
+  for (const r of w.appRects || []) {
+    if (r.y < 30 || r.y > h.y - 90) continue;
+    const x = Math.max(r.x + 12, Math.min(r.x + r.w - 12, wantX));
+    cands.push({ x, y: r.y, kind: 'window' }, { x: r.x + 6, y: r.y, kind: 'window' }, { x: r.x + r.w - 6, y: r.y, kind: 'window' });
+  }
+  // thỏ khác đang ở trên cao (ví dụ Thỏ Phản Lực đang bay)
+  for (const q of w.pets) {
+    if (q === this || q.dead) continue;
+    const qy = q.y + OY * q.scale + 10;
+    if (qy < h.y - 140) cands.push({ x: q.x + q.w / 2, y: qy, kind: 'pet', pet: q });
+  }
+  const ok = cands.filter((c) => {
+    const dy = h.y - c.y, dx = c.x - h.x;
+    return dy > 90 && Math.hypot(dx, dy) < 820 && Math.abs(dx) < 520;
+  });
+  if (!ok.length) return null;
+  // ưu tiên: lệch đúng hướng, gần điểm mong muốn; cửa sổ app và thỏ khác được cộng điểm cho vui
+  ok.forEach((c) => {
+    c.score = Math.abs(c.x - wantX) + Math.abs((h.y - c.y) - 320) * 0.6 - (c.kind === 'window' ? 180 : c.kind === 'pet' ? 220 : 0) + Math.random() * 120;
+    if (Math.sign(c.x - h.x) !== dir && Math.abs(c.x - h.x) > 40) c.score += 400;
+  });
+  ok.sort((a, b) => a.score - b.score);
+  return ok[0];
+};
+
+Pet.prototype.ropeLine = function () {
+  if (!this.ropeEl) {
+    this.ropeEl = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+    this.ropeEl.setAttribute('class', 'rope');
+    this.world.ropes.appendChild(this.ropeEl);
+  }
+  return this.ropeEl;
+};
+
+Pet.prototype.shootRope = function (anchor, opts = {}) {
+  const t = now();
+  this.rope = {
+    anchor, ax: anchor.x, ay: anchor.y, len: 0, shootStart: t, shootEnd: t + 170,
+    releaseAt: t + (opts.releaseMs ?? rand(1300, 2300)), chain: opts.chain ?? 0, kick: opts.kick || null, dir: opts.dir ?? this.dir,
+  };
+  this.ground = false;
+  if (this.vy > -200) this.vy = -320;
+  this.vx = this.rope.dir * Math.max(Math.abs(this.vx), 220);
+  this.do('swinging', { dur: HOLD_POWER });
+  if (anchor.kind === 'window') this.world.spark?.(anchor.x, anchor.y);
+};
+const HOLD_POWER = 600000;
+
+Pet.prototype.cutRope = function () {
+  if (this.ropeEl) { this.ropeEl.remove(); this.ropeEl = null; }
+  this.rope = null;
+};
+
+// Physics con lắc: trả về 'stop' nếu đã chuyển màn / bị huỷ
+Pet.prototype.updateRope = function (t, dt) {
+  const r = this.rope;
+  if (r.anchor.pet) {
+    const q = r.anchor.pet;
+    if (q.dead) { this.cutRope(); this.vy += 1800 * dt; this.x += this.vx * dt; this.y += this.vy * dt; return; }
+    r.ax = q.x + q.w / 2; r.ay = q.y + OY * q.scale + 10;
+  }
+  this.vy += 1800 * dt;
+  this.x += this.vx * dt; this.y += this.vy * dt;
+  const h = this.handPos();
+  let line = this.ropeLine();
+  if (t < r.shootEnd) {
+    // dây đang bắn ra
+    const k = (t - r.shootStart) / (r.shootEnd - r.shootStart);
+    line.setAttribute('x1', h.x); line.setAttribute('y1', h.y);
+    line.setAttribute('x2', h.x + (r.ax - h.x) * k); line.setAttribute('y2', h.y + (r.ay - h.y) * k);
+    return;
+  }
+  if (!r.len) r.len = Math.hypot(h.x - r.ax, h.y - r.ay) * 0.92;
+  const dx = h.x - r.ax, dy = h.y - r.ay, d = Math.hypot(dx, dy) || 1;
+  const nx = dx / d, ny = dy / d;
+  if (d > r.len) {
+    const hx = r.ax + nx * r.len, hy = r.ay + ny * r.len;
+    this.x += hx - h.x; this.y += hy - h.y;
+    const radial = this.vx * nx + this.vy * ny;
+    if (radial > 0) { this.vx -= radial * nx; this.vy -= radial * ny; }
+  }
+  // "đạp" thêm lực cho đu cao hơn
+  const tx = -ny, ty = nx, vt = this.vx * tx + this.vy * ty;
+  const pump = 380 * dt * (Math.abs(vt) < 40 ? r.dir : Math.sign(vt));
+  if (ny > 0.3) { this.vx += tx * pump; this.vy += ty * pump; }
+  this.dir = this.vx >= 0 ? 1 : -1;
+  line.setAttribute('x1', this.handPos().x); line.setAttribute('y1', this.handPos().y);
+  line.setAttribute('x2', r.ax); line.setAttribute('y2', r.ay);
+
+  // đá trúng mục tiêu khi đang đu
+  if (r.kick && !r.kick.dead) {
+    const k = r.kick, kx = k.x + k.w / 2, ky = k.y + k.footY * 0.6;
+    const px2 = this.x + this.w / 2, py2 = this.y + this.footY * 0.7;
+    if (Math.hypot(kx - px2, ky - py2) < 45 && Math.hypot(this.vx, this.vy) > 250) {
+      k.inEvent = false; k.knock(this.vx >= 0 ? 1 : -1, 1.4);
+      this.world.impactAt?.(kx, ky, 'BỐP!');
+      k.emote(pick(['😵', '🤕', '💫'])); this.emote('🦵');
+      k.grudge = this; r.kick = null;
+      r.releaseAt = t + 150;
+    }
+  }
+  // buông dây khi đang vung lên phía trước
+  const stuck = t > r.releaseAt + 2500 || (r.kick && t > r.releaseAt + 1500);
+  if (stuck) { r.kick = null; this.cutRope(); this.do('leap', { dur: HOLD_POWER }); return; }
+  if (t > r.releaseAt && this.vy < 60 && Math.sign(this.vx) === Math.sign(r.dir) && !r.kick) {
+    this.vx *= 1.12; this.vy -= 120;
+    const chain = r.chain;
+    this.cutRope();
+    this.do('leap', { dur: HOLD_POWER });
+    if (chain > 0 && Math.random() < 0.75) {
+      setTimeout(() => {
+        if (this.dead || this.ground || this.dragging || this.rope) return;
+        const a = this.findAnchor(this.vx >= 0 ? 1 : -1);
+        if (a) this.shootRope(a, { chain: chain - 1, dir: this.vx >= 0 ? 1 : -1 });
+      }, rand(180, 380));
+    }
+  }
+};
+
+Pet.prototype.swing = function (opts = {}) {
+  if (this.type !== 'hook' || !this.ground || this.dragging) return false;
+  const dir = opts.dir ?? (Math.random() < 0.5 ? -1 : 1);
+  const anchor = this.findAnchor(dir, opts.preferX);
+  if (!anchor) { this.emote('🤷'); return false; }
+  this.dir = dir;
+  this.do('aimRope', { dur: HOLD_POWER, say: 0 });
+  if (Math.random() < 0.2) this.say(line('swing')); else this.emote(pick(['🪝', '😏', '🎯']));
+  setTimeout(() => {
+    if (this.dead || this.dragging || !this.ground) { if (!this.dead && this.ground && !this.dragging) this.next(); return; }
+    this.vy = -380; this.vx = dir * 160;
+    this.shootRope(anchor, { chain: opts.chain ?? (Math.random() < 0.6 ? 2 : 0), kick: opts.kick, dir, releaseMs: opts.releaseMs });
+  }, 380);
+  return true;
+};
+
+// ---------- BAY PHẢN LỰC ----------
+Pet.prototype.pickFlyTarget = function (mode) {
+  const w = this.world;
+  if (mode === 'land') return { x: rand(20, w.W - this.w - 20), y: this.floor(), land: true };
+  if (mode === 'away') {
+    const o = (w.others || []).length ? pick(w.others) : null;
+    if (o) return { x: o.x + o.w / 2 - this.w / 2, y: Math.max(o.y + 80, Math.min(o.y + o.h - 260, o.y + o.h / 2)), away: true };
+  }
+  return { x: rand(20, w.W - this.w - 20), y: rand(40, Math.max(60, this.floor() - 180)) };
+};
+
+Pet.prototype.startFly = function (opts = {}) {
+  if (this.type !== 'jet' || this.dragging) return false;
+  this.flying = {
+    target: opts.target || this.pickFlyTarget(),
+    fuelEnd: now() + (opts.fuelLeft ?? rand(9000, 16000)), hops: opts.hops ?? Math.floor(rand(2, 5)), lastSmoke: 0,
+  };
+  this.ground = false; this.target = null;
+  if (this.vy > -150) this.vy = -260;
+  this.do('fly', { dur: HOLD_POWER, say: 0 });
+  if (!opts.silent) { if (Math.random() < 0.2) this.say(line('fly')); else this.emote(pick(['🚀', '😎'])); }
+  this.world.dust(this, 10);
+  return true;
+};
+
+Pet.prototype.stopFly = function (reason) {
+  this.flying = null;
+  const g = this.el.querySelector('.grow'); if (g) g.style.rotate = '';
+  if (reason === 'fuel') { this.do('fuelOut', { dur: HOLD_POWER, say: 0 }); if (Math.random() < 0.4) this.say(line('fuelOut')); else this.emote(pick(['⛽', '😱'])); this.afterLand = 'pancake'; }
+};
+
+Pet.prototype.updateFly = function (t, dt) {
+  const f = this.flying;
+  if (t > f.fuelEnd) { this.stopFly('fuel'); return; }
+  const tg = f.follow && !f.follow.dead ? { x: f.follow.x, y: f.follow.y - 170 } : f.target;
+  const dx = tg.x - this.x, dy = tg.y - this.y, d = Math.hypot(dx, dy);
+  const sp = f.away ? 420 : 300;
+  const wantVx = (dx / (d || 1)) * Math.min(sp, d * 2.2), wantVy = (dy / (d || 1)) * Math.min(sp, d * 2.2);
+  const acc = 1100 * dt;
+  this.vx += Math.max(-acc, Math.min(acc, wantVx - this.vx));
+  this.vy += Math.max(-acc, Math.min(acc, wantVy - this.vy)) + Math.sin(t / 180) * 30 * dt;
+  this.x += this.vx * dt; this.y += this.vy * dt;
+  this.dir = this.vx >= 0 ? 1 : -1;
+  const g = this.el.querySelector('.grow'); if (g) g.style.rotate = Math.max(-18, Math.min(18, this.vx / 14)) * this.dir + 'deg';
+  if (t - f.lastSmoke > 110) { f.lastSmoke = t; this.world.smoke?.(this.x + this.w / 2 - this.dir * 18, this.y + this.footY - 6); }
+  if (!f.follow && d < 26) {
+    if (tg.land) { this.stopFly(); this.vy = 80; return; }
+    if (--f.hops <= 0) f.target = this.pickFlyTarget(Math.random() < 0.25 ? 'away' : 'land');
+    else f.target = this.pickFlyTarget(Math.random() < 0.18 ? 'away' : undefined);
+    if (f.target.away) f.away = true;
+  }
+};
+
+// ---------- PHÌNH TO ----------
+Pet.prototype.puffUp = function (ms) {
+  if (this.type !== 'puff' || this.giantUntil || this.dead) return false;
+  this.giantUntil = now() + (ms ?? rand(9000, 14000));
+  this.basePal = this.basePal || { ...this.pal };
+  Object.assign(this.pal, PUFF_RAGE);
+  this.el.classList.add('giant');
+  this.inEvent = true;
+  this.do('giant', { dur: HOLD_POWER, say: 0 });
+  if (Math.random() < 0.35) this.say(line('puff')); else this.emote(pick(['💢', '🌋', '😤']));
+  this.world.quake?.(this, 0.6);
+  giantLoop(this);
+  return true;
+};
+
+Pet.prototype.deflate = function () {
+  if (!this.giantUntil) return;
+  this.giantUntil = 0;
+  if (this.basePal) Object.assign(this.pal, this.basePal);
+  this.el.classList.remove('giant');
+  this.inEvent = false;
+  if (this.carrying) { const c = this.carrying; this.carrying = null; c.carriedBy = null; c.inEvent = false; c.knock(this.dir, 0.6); }
+  this.do('deflate', { say: 0 });
+  if (Math.random() < 0.4) this.say(line('deflate')); else this.emote(pick(['😳', '🎈', '🫣']));
+};
+
+async function giantLoop(p) {
+  const S = (ms) => new Promise((r) => setTimeout(r, ms));
+  while (!p.dead && p.giantUntil && now() < p.giantUntil) {
+    if (p.dragging) { await S(300); continue; }
+    if (!p.ground) { await S(150); continue; }
+    const victims = [...p.world.pets].filter((q) => q !== p && !q.dead && q.ground && !q.dragging && !q.carriedBy && !q.giantUntil && !q.leaving);
+    const r = Math.random();
+    if (r < 0.4 || !victims.length) {
+      // dậm chân
+      p.do('giant', { dur: HOLD_POWER, say: 0 });
+      p.vy = -380; p.ground = false;
+      await S(520);
+      if (p.dead || !p.giantUntil) break;
+      p.world.quake?.(p, 1);
+      p.world.impactAt?.(p.x + p.w / 2, p.y + p.footY, 'RẦM!');
+      await S(rand(700, 1300));
+    } else {
+      // tóm một đứa rồi ném
+      const v = victims.sort((a, b) => Math.abs(a.x - p.x) - Math.abs(b.x - p.x))[0];
+      p.target = Math.max(0, Math.min(p.world.W - p.w, v.x + (v.x > p.x ? -40 : 40)));
+      p.dir = v.x > p.x ? 1 : -1;
+      p.action = 'giantWalk'; p.until = HOLD_POWER + now(); p.applyClass();
+      const t0 = now();
+      while (!p.dead && p.giantUntil && p.target != null && now() - t0 < 6000) await S(80);
+      if (p.dead || !p.giantUntil || v.dead || v.dragging || !v.ground) { await S(300); continue; }
+      v.inEvent = true; v.target = null; v.cutRope?.(); v.flying = null;
+      v.carriedBy = p; p.carrying = v;
+      v.do('carried', { dur: HOLD_POWER, say: 0 });
+      if (Math.random() < 0.35) v.say(line('grabbed')); else v.emote(pick(['😱', '🆘', '🙀']));
+      p.do('carry', { dur: HOLD_POWER, say: 0 }); p.emote('😈');
+      await S(1100);
+      if (p.dead || !p.carrying) continue;
+      p.carrying = null; v.carriedBy = null; v.inEvent = false;
+      const dir = Math.random() < 0.5 ? -1 : 1;
+      p.dir = dir; p.applyClass();
+      v.knock(dir, 1.9, 'faint'); v.vy = -rand(780, 980);
+      v.grudge = p;
+      p.do('giant', { dur: HOLD_POWER, say: 0 });
+      await S(rand(900, 1500));
+    }
+  }
+  if (!p.dead) p.deflate();
+}
+
+// Đứa đang bị cõng/nhấc bổng: dính theo tay Thỏ Phình To
+Pet.prototype.updateCarried = function () {
+  const g = this.carriedBy;
+  if (!g || g.dead || !g.giantUntil) { this.carriedBy = null; this.inEvent = false; this.ground = false; return false; }
+  this.x = g.x + g.w / 2 - this.w / 2 + Math.sin(now() / 90) * 3;
+  this.y = g.y + g.footY - 16 * g.scale * GIANT - this.footY + 14;
+  this.ground = false; this.vx = 0; this.vy = 0;
+  return true;
+};
+
+// ---------- CHIÊU ĐÁNH NHAU CỦA SIÊU ANH HÙNG ----------
+async function powerAttack(a, b) {
+  if (a.type === 'hook') return swingKick(a, b);
+  if (a.type === 'jet') return bombRun(a, b);
+  if (a.type === 'puff') { a.emote('😤'); return a.puffUp(); }
+}
+
+async function swingKick(a, b) {
+  await scene([a, b], async () => {
+    face(a, b);
+    a.emote(pick(['😏', '🪝']));
+    b.do(b.action === 'walk' ? 'idle' : b.action, { dur: HOLD });
+    await sleep(500);
+    if (!ok(a, b) || !a.ground) return;
+    const dir = b.x >= a.x ? 1 : -1;
+    // móc vào điểm phía trên giữa 2 đứa, hơi lệch về phía mục tiêu
+    if (!a.swing({ dir, preferX: (a.x + b.x) / 2 + a.w / 2 + dir * 30, chain: 0, kick: b, releaseMs: 2600 })) return;
+    const t0 = performance.now();
+    while (!a.dead && (a.rope || !a.ground) && performance.now() - t0 < 5000) await sleep(100);
+  });
+}
+
+async function bombRun(a, b) {
+  await scene([a, b], async () => {
+    a.emote('😈');
+    if (!a.startFly({ silent: true, fuelLeft: 12000 })) return;
+    a.flying.follow = b;
+    if (Math.random() < 0.3) a.say(line('bomb'));
+    await sleep(1600);
+    for (let i = 0; i < 3 && a.flying && ok(b); i++) {
+      dropBread(a, b);
+      await sleep(rand(450, 700));
+    }
+    await sleep(800);
+    if (a.flying) { a.flying.follow = null; a.flying.hops = 1; a.flying.target = a.pickFlyTarget(); }
+  });
+}
+
+function dropBread(a, tg) {
+  const el = document.createElement('div');
+  el.className = 'bread'; el.textContent = '🥖';
+  let x = a.x + a.w / 2, y = a.y + a.footY - 10, vx = a.vx * 0.4, vy = 60, rot = 0;
+  world.layer.appendChild(el);
+  let last = performance.now();
+  const step = (t) => {
+    const dt = Math.min(0.05, (t - last) / 1000); last = t;
+    vy += 1500 * dt; x += vx * dt; y += vy * dt; rot += 600 * dt;
+    el.style.transform = `translate(${x - 12}px, ${y - 12}px) rotate(${rot}deg)`;
+    const kx = tg.x + tg.w / 2, ky = tg.y + tg.footY * 0.6;
+    if (!tg.dead && Math.abs(kx - x) < tg.w * 0.3 && Math.abs(ky - y) < 40) {
+      el.remove(); world.impactAt?.(x, y, 'BỘP!');
+      tg.inEvent = false; tg.knock(vx >= 0 ? 1 : -1, 0.7, 'faint'); tg.emote(pick(['🥖', '😵', '🤕'])); tg.grudge = a;
+      return;
+    }
+    if (y > world.H + 40) { el.remove(); return; }
+    if (y > world.H - 14) { el.remove(); world.impactAt?.(x, world.H - 20, 'bộp'); return; }
+    requestAnimationFrame(step);
+  };
+  requestAnimationFrame(step);
+}
+
+</script>
+<script>
+// Thế giới: vòng lặp, chuột, menu, team, tương tác giữa các bạn, đồng bộ session Claude.
+const API = window.doomlet || null; // có khi chạy trong Electron
+const MAX_PETS = 16;
+const world = {
+  layer: document.getElementById('world'), pets: new Set(), W: innerWidth, H: innerHeight,
+  others: [], origin: { x: 0, y: 0 }, primary: true, demoWrap: false,
+};
+// Bản đồ các màn khác (toạ độ theo màn này)
+const inRect = (r, x, y, pad = 0) => x >= r.x - pad && x <= r.x + r.w + pad && y >= r.y - pad && y <= r.y + r.h + pad;
+world.findTarget = (x, y) => {
+  if (world.demoWrap) return x < 0 || x > world.W ? 'demo' : null;
+  const r = world.others.find((o) => inRect(o, x, y)) || world.others.find((o) => inRect(o, x, y, 60));
+  return r ? r.id : null;
+};
+world.findBelow = (cx) => {
+  if (world.demoWrap) return null;
+  const r = world.others.find((o) => o.y >= world.H - 10 && o.y <= world.H + 200 && cx >= o.x && cx <= o.x + o.w);
+  return r ? r.id : null;
+};
+world.travelPlan = (dir, p) => {
+  const W = world.W, H = world.H;
+  if (dir === 'left' || dir === 'right') {
+    if (world.findTarget(dir === 'left' ? -40 : W + 40, H - 60) == null) return null;
+    return { x: dir === 'left' ? 0 : W - p.w };
+  }
+  const rs = world.others.filter((o) => (dir === 'down' ? o.y >= H - 10 && o.y <= H + 200 : o.y + o.h <= 10 && o.y + o.h >= -200));
+  for (const o of rs) {
+    const a = Math.max(0, o.x) + 10, b = Math.min(W, o.x + o.w) - p.w - 10;
+    if (b > a) return { x: Math.round(a + Math.random() * (b - a)) };
+  }
+  return null;
+};
+// Bụi tung lên khi bật nhảy / tiếp đất
+world.dust = (p, n = 8) => {
+  const fx = p.x + p.w / 2, fy = p.y + p.footY;
+  for (let i = 0; i < n; i++) {
+    const d = document.createElement('div');
+    d.className = 'dust';
+    const sz = 3 + Math.round(Math.random() * 3) * 2;
+    d.style.cssText = `left:${fx}px;top:${fy - sz}px;width:${sz}px;height:${sz}px;--dx:${(Math.random() * 2 - 1) * 60}px;--dy:${-10 - Math.random() * 30}px`;
+    world.layer.appendChild(d);
+    setTimeout(() => d.remove(), 700);
+  }
+};
+// Lớp vẽ dây móc
+world.ropes = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+world.ropes.id = 'ropes';
+document.body.insertBefore(world.ropes, document.getElementById('world'));
+world.appRects = []; // vị trí cửa sổ các app khác (Windows), để móc dây vào
+world.smoke = (x, y) => {
+  const d = document.createElement('div');
+  d.className = 'smoke'; d.style.left = x - 5 + 'px'; d.style.top = y + 'px';
+  world.layer.appendChild(d); setTimeout(() => d.remove(), 700);
+};
+world.impactAt = (x, y, text) => {
+  const el = document.createElement('div');
+  el.className = 'clash'; el.style.left = x + 'px'; el.style.top = y + 'px';
+  el.innerHTML = `<span>${text}</span>`;
+  world.layer.appendChild(el); setTimeout(() => el.remove(), 520);
+};
+world.spark = (x, y) => world.impactAt(x, y + 12, '✦');
+// Thỏ Phình To dậm chân: các bạn khác nảy lên
+world.quake = (src, power = 1) => {
+  document.body.classList.remove('quake'); void document.body.offsetWidth; document.body.classList.add('quake');
+  for (const q of world.pets) {
+    if (q === src || !q.ground || q.dragging || q.dead || q.carriedBy) continue;
+    q.vy = -rand(180, 340) * power; q.ground = false;
+    if (Math.random() < 0.4) q.emote(pick(['😱', '🙀', '😨']));
+  }
+};
+// Vệt mờ khi đang bay
+world.trail = (p) => {
+  const g = document.createElement('div');
+  g.className = 'trail';
+  g.style.cssText = `left:${p.x + p.w / 2 - 6}px;top:${p.y + p.footY - 30}px`;
+  world.layer.appendChild(g);
+  setTimeout(() => g.remove(), 450);
+};
+world.migrate = (to, payload) => {
+  if (API) API.migrate({ to, pet: payload });
+  else setTimeout(() => arrive({ pet: payload, x: payload.vx > 0 ? -SPR_W * payload.scale / 2 : world.W - SPR_W * payload.scale / 2, y: payload.gy }), 120);
+};
+world.onMigrated = (p) => { for (const [id, q] of sessionPets) if (q === p) sessionPets.delete(id); };
+function arrive({ pet, x, y }) {
+  const p = spawn({ type: pet.type, hoodie: pet.hoodie, name: pet.name, label: pet.label, scale: pet.scale, x, y, migrated: pet });
+  if (p && pet.sessionId) sessionPets.set(pet.sessionId, p);
+}
+addEventListener('resize', () => { world.W = innerWidth; world.H = innerHeight; });
+
+const TYPES = ['insomnia', 'hook', 'beanie', 'jet', 'sage', 'puff', 'carrot', 'office'];
+let typeCursor = 0, hoodieCursor = 0;
+const sessionPets = new Map();
+
+function usedNames() { return new Set([...world.pets].map((p) => p.name)); }
+function freshName() { const u = usedNames(); return NAMES.find((n) => !u.has(n)) || pick(NAMES); }
+
+function spawn(o = {}) {
+  if (world.pets.size >= MAX_PETS) return null;
+  const type = o.type || TYPES[typeCursor++ % TYPES.length];
+  const hoodie = o.hoodie || (type === 'insomnia' && !o.owner && world.pets.size === 0 ? null : HOODIES[hoodieCursor++ % HOODIES.length]);
+  const name = o.name || (HERO_NAMES[type] ? (HERO_NAMES[type].find((n) => !usedNames().has(n)) || pick(HERO_NAMES[type])) : null) || (type === 'sage' ? (SAGE_NAMES.find((n) => !usedNames().has(n)) || pick(SAGE_NAMES)) : freshName());
+  const p = new Pet(world, { ...o, type, hoodie, name, label: o.label || name });
+  world.pets.add(p);
+  return p;
+}
+function spawnHeroes() { ['hook', 'jet', 'puff'].forEach((t, i) => setTimeout(() => spawn({ type: t }), i * 400)); }
+function spawnTeam(n = 6) {
+  for (let i = 0; i < n; i++) setTimeout(() => spawn({ x: 80 + (i * (world.W - 200)) / Math.max(1, n - 1) }), i * 350);
+}
+function dismissTeam() {
+  const free = [...world.pets].filter((p) => !p.session && !p.owner && !p.leaving);
+  const keep = sessionPets.size ? 0 : 1;
+  free.slice(keep).forEach((p, i) => setTimeout(() => p.leave(), i * 250));
+}
+
+// ---------- vòng lặp ----------
+let last = performance.now(), nextSocial = last + 4000;
+function loop(t) {
+  const dt = Math.min(0.05, (t - last) / 1000); last = t;
+  for (const p of [...world.pets]) {
+    p.update(t, dt);
+    if (p.action === 'leap' && !p.ground && !p.dead && (p._tr = (p._tr || 0) + 1) % 3 === 0) world.trail(p);
+  }
+  collisions(t);
+  if (t > nextSocial) { social(); nextSocial = t + rand(18000, 35000); }
+  requestAnimationFrame(loop);
+}
+requestAnimationFrame(loop);
+
+// Tình huống giữa các bạn nằm trong drama.js
+
+// ---------- chuột: chọc, kéo, ném, menu ----------
+let drag = null;
+const menu = document.getElementById('menu');
+
+world.layer.addEventListener('pointerdown', (e) => {
+  const el = e.target.closest('.spr');
+  if (!el || e.button !== 0) return;
+  const p = el.parentElement._pet;
+  hideMenu();
+  try { el.setPointerCapture(e.pointerId); } catch {}
+  drag = { p, sx: e.clientX, sy: e.clientY, ox: e.clientX - p.x, oy: e.clientY - p.y, moved: false, hist: [] };
+  e.preventDefault();
+});
+addEventListener('pointermove', (e) => {
+  updateHover(e);
+  if (!drag) return;
+  const { p } = drag;
+  if (!drag.moved && Math.hypot(e.clientX - drag.sx, e.clientY - drag.sy) > 5) {
+    drag.moved = true; p.dragging = true; p.ground = false; p.target = null; p.cutRope?.(); if (p.flying) p.stopFly(); if (p.carriedBy) { p.carriedBy.carrying = null; p.carriedBy = null; } p.do('dangle');
+  }
+  if (drag.moved) {
+    p.x = e.clientX - drag.ox; p.y = e.clientY - drag.oy;
+    drag.hist.push({ x: e.clientX, y: e.clientY, t: performance.now() });
+    if (drag.hist.length > 6) drag.hist.shift();
+  }
+});
+addEventListener('pointercancel', () => { if (drag) { drag.p.dragging = false; drag.p.ground = false; drag = null; } });
+addEventListener('pointerup', () => {
+  if (!drag) return;
+  const { p } = drag;
+  if (drag.moved) {
+    API?.log?.({ ev: 'throw', x: Math.round(p.x), y: Math.round(p.y), W: world.W, H: world.H });
+    const h = drag.hist, a = h[0], b = h[h.length - 1];
+    const dt = Math.max(0.016, ((b?.t || 0) - (a?.t || 0)) / 1000);
+    p.vx = a && b ? Math.max(-1600, Math.min(1600, (b.x - a.x) / dt)) : 0;
+    p.vy = a && b ? Math.max(-1600, Math.min(1600, (b.y - a.y) / dt)) : 0;
+    p.dragging = false; p.ground = false; p.action = 'dangle'; p.applyClass();
+  } else p.poke();
+  drag = null;
+});
+world.layer.addEventListener('dblclick', (e) => {
+  const el = e.target.closest('.spr'); if (!el) return;
+  el.parentElement._pet.do(pick(['flip', 'spin', 'dance', 'rofl', 'headbang']));
+});
+world.layer.addEventListener('contextmenu', (e) => {
+  const el = e.target.closest('.spr'); if (!el) return;
+  e.preventDefault(); showMenu(el.parentElement._pet, e.clientX, e.clientY);
+});
+
+const MENU = [
+  ['Nhảy', 'dance'], ['Lộn vòng', 'flip'], ['Xoay vòng', 'spin'], ['Cười lăn lộn', 'rofl'],
+  ['Uống cà phê', 'coffee'], ['Thở dài', 'sigh'], ['Khóc', 'cry'], ['Nổi điên', 'rage'],
+  ['Facepalm', 'facepalm'], ['Nhún vai', 'shrug'], ['Liếc xéo', 'sideeye'], ['Tan chảy', 'melt'],
+  ['Hồn lìa khỏi xác', 'soul'], ['Trốn vào thùng', 'hide'], ['Ngồi bó gối', 'corner'], ['Đập đầu bàn phím', 'headbang'],
+  ['Ngất', 'faint'], ['Đi ngủ', 'sleep'], ['Lướt điện thoại', 'scroll'], ['Vươn vai', 'stretch'],
+  null,
+  ['Trêu đứa gần nhất', '@tease'], ['Ôm đứa gần nhất', '@hug'],
+  ['Cãi nhau với đứa gần nhất', '@argue'], ['Đánh nhau với đứa gần nhất', '@brawl'],
+  ['Đấu kiếm với đứa gần nhất', '@duel'], ['Thách đấu súng', '@shootout'],
+  ['Bắn đứa gần nhất (pew pew)', '@spray'], ['Gọi Thầy ra giảng đạo', '@lecture'],
+  null,
+  ['Đu dây (Thỏ Dây Móc)', '@swing'], ['Bay (Thỏ Phản Lực)', '@fly'], ['Phình to (Thỏ Phình To)', '@puff'],
+  ['Tung chiêu vào đứa gần nhất', '@power'], ['Gọi 3 siêu anh hùng', '@heroes'],
+  ['Nhảy sang màn trái', '@go:left'], ['Nhảy sang màn phải', '@go:right'],
+  ['Nhảy lên màn trên', '@go:up'], ['Rơi xuống màn dưới', '@go:down'],
+  null,
+  ['Gọi thêm 1 đứa', '@spawn'], ['Gọi cả team', '@team'], ['Giải tán team', '@dismiss'], ['Đuổi về', '@remove'],
+];
+function showMenu(p, x, y) {
+  menu.innerHTML = `<div class="mh">${p.name}${p.session ? ' · ' + p.label : ''}</div>` + MENU.map((m) =>
+    m ? `<button data-a="${m[1]}">${m[0]}</button>` : '<hr>').join('');
+  menu.style.display = 'block';
+  const r = menu.getBoundingClientRect();
+  menu.style.left = Math.min(x, world.W - r.width - 8) + 'px';
+  menu.style.top = Math.min(y, world.H - r.height - 8) + 'px';
+  menu.onclick = (e) => {
+    const a = e.target.dataset?.a; if (!a) return;
+    hideMenu();
+    if (a === '@spawn') spawn();
+    else if (a === '@team') spawnTeam(4);
+    else if (a === '@dismiss') dismissTeam();
+    else if (a === '@remove') p.leave();
+    else if (a === '@heroes') spawnHeroes();
+    else if (a === '@swing' || a === '@fly' || a === '@puff') {
+      const want = { '@swing': 'hook', '@fly': 'jet', '@puff': 'puff' }[a];
+      const h = p.type === want ? p : [...world.pets].find((q) => q.type === want && !q.dead && q.ground) || null;
+      if (!h) { spawn({ type: want, x: p.x + 100 }); return; }
+      h.inEvent = false;
+      const r = a === '@swing' ? h.swing() : a === '@fly' ? h.startFly() : h.puffUp();
+      if (r === false) h.emote('🤷');
+    }
+    else if (a === '@power') {
+      const hero = ['hook', 'jet', 'puff'].includes(p.type) ? p : [...world.pets].find((q) => ['hook', 'jet', 'puff'].includes(q.type) && !q.dead && q.ground);
+      if (!hero) { p.say('team mình chưa có siêu anh hùng. gọi đi!'); return; }
+      const b = [...world.pets].filter((q) => q !== hero && q.ground && !q.dead && !q.leaving).sort((q, r2) => Math.abs(q.x - hero.x) - Math.abs(r2.x - hero.x))[0];
+      if (!b) return hero.emote('🤷');
+      hero.inEvent = b.inEvent = false; powerAttack(hero, b);
+    }
+    else if (a.startsWith('@go:')) {
+      if (!p.travel(a.slice(4))) p.say(p.owner ? 'tui phải ở cạnh sếp.' : 'phía đó không có màn hình. chỉ có tường.');
+    }
+    else if (['@argue', '@brawl', '@duel', '@shootout', '@spray', '@lecture'].includes(a)) {
+      const b = [...world.pets].filter((q) => q !== p && q.ground && !q.leaving && !q.owner).sort((q, r2) => Math.abs(q.x - p.x) - Math.abs(r2.x - p.x))[0];
+      if (a === '@lecture') {
+        const sage = p.type === 'sage' ? p : [...world.pets].find((q) => q.type === 'sage' && !q.dead) || spawn({ type: 'sage', x: p.x + 120 });
+        const target = sage === p ? b : p;
+        if (!target) return p.say('không có ai để giảng. ta giảng cho gió vậy.');
+        if (sage) { sage.inEvent = target.inEvent = false; setTimeout(() => lecture(sage, target), sage.ground ? 0 : 1800); }
+        return;
+      }
+      if (!b) return p.say('không có ai. tui đánh với bóng mình vậy.');
+      p.inEvent = b.inEvent = false;
+      ({ '@argue': argue, '@brawl': brawl, '@duel': duel, '@shootout': shootout, '@spray': sprayAt })[a](p, b);
+    }
+    else if (a === '@tease' || a === '@hug') {
+      const b = [...world.pets].filter((q) => q !== p && q.ground && !q.leaving).sort((q, r2) => Math.abs(q.x - p.x) - Math.abs(r2.x - p.x))[0];
+      if (!b) return p.say('không có ai để ' + (a === '@hug' ? 'ôm' : 'trêu') + '. cô đơn ghê.');
+      if (a === '@hug') goTo(p, b, () => { face(p, b); p.do('hug'); b.do('hugged'); });
+      else { face(p, b); p.do('tease'); setTimeout(() => { b.walkTo(p.x, 'chase'); b.onArrive = () => b.do('rage'); p.walkTo(p.x + (p.x < b.x ? -350 : 350), 'flee'); }, 1500); }
+    } else p.do(a, { say: 1 });
+  };
+}
+function hideMenu() { menu.style.display = 'none'; }
+addEventListener('pointerdown', (e) => { if (!e.target.closest('#menu')) hideMenu(); }, true);
+
+// Trong Electron: chỉ bắt chuột khi trỏ vào thỏ/menu, còn lại click xuyên qua xuống app bên dưới
+let interactive = false;
+function updateHover(e) {
+  if (!API) return;
+  const want = !!drag || !!(e.target.closest && e.target.closest('.spr, #menu, #panel'));
+  if (want !== interactive) { interactive = want; API.setIgnore(!want); }
+}
+
+// ---------- đồng bộ session Claude Code ----------
+function syncSessions(list) {
+  const seen = new Set();
+  for (const s of list) {
+    seen.add(s.id);
+    let p = sessionPets.get(s.id);
+    if (!p || p.dead) {
+      p = spawn({ type: sessionPets.size === 0 ? 'insomnia' : undefined, label: s.project });
+      if (!p) continue;
+      p.sessionId = s.id;
+      sessionPets.set(s.id, p);
+    }
+    p.setSession(s);
+    // subagent → thêm đồng đội nhỏ đứng cạnh
+    const helpers = [...world.pets].filter((q) => q.owner === p && !q.leaving);
+    const want = Math.min(s.subagents || 0, 4);
+    for (let i = helpers.length; i < want; i++) {
+      const off = (i % 2 ? 1 : -1) * (55 + Math.floor(i / 2) * 45);
+      const h = spawn({ owner: p, offset: off, scale: 3, x: p.x + off, label: 'sub ' + (i + 1) });
+      if (h) h.setTag();
+    }
+    helpers.slice(want).forEach((h) => h.leave());
+  }
+  for (const [id, p] of sessionPets) {
+    if (!seen.has(id)) { sessionPets.delete(id); if (!p.dead) { p.session = null; p.leave(); } }
+  }
+}
+
+function travelAll() {
+  [...world.pets].filter((p) => p.canTravel() && p.ground).forEach((p, i) => setTimeout(() => {
+    const dirs = p.availableDirs(); if (dirs.length) p.travel(dirs[i % dirs.length]);
+  }, i * 300));
+}
+if (API) {
+  API.onLayout((l) => { world.others = l.others || []; world.origin = l.origin; world.primary = l.primary; });
+  API.onArrive(arrive);
+  API.onSessions(syncSessions);
+  API.onCommand((c) => ({ spawn, team: () => spawnTeam(6), team2: () => spawnTeam(2), heroes: spawnHeroes, dismiss: dismissTeam, travel: travelAll }[c]?.()));
+  API.onAnchors?.((rects) => { world.appRects = rects || []; });
+  setTimeout(() => { if (world.primary && world.pets.size === 0) spawn({ type: 'insomnia' }); }, 2500);
+} else {
+  startDemo();
+}
+
+// ---------- chế độ demo trên trình duyệt ----------
+function startDemo() {
+  const panel = document.getElementById('panel');
+  panel.style.display = 'flex';
+  world.demoWrap = true; // demo: nhảy ra mép này sẽ vào từ mép kia
+  spawn({ type: 'insomnia' });
+  let fakeN = 0;
+  panel.addEventListener('click', (e) => {
+    const a = e.target.dataset?.a;
+    if (a === 'spawn') spawn();
+    if (a === 'team') spawnTeam(6);
+    if (a === 'heroes') spawnHeroes();
+    if (a === 'dismiss') dismissTeam();
+    if (a === 'session') fakeSession(++fakeN);
+    if (a === 'travel') travelAll();
+  });
+  const fakes = new Map();
+  function fakeSession(n) {
+    const id = 'demo-' + n;
+    const script = [
+      { state: 'thinking', t: 4000 }, { state: 'working', tool: 'Read', t: 5000 }, { state: 'working', tool: 'Agent', subagents: 2, t: 9000 },
+      { state: 'working', tool: 'Edit', t: 5000 }, { state: 'waiting', tool: 'Bash', t: 6000 }, { state: 'working', tool: 'Bash', t: 4000 },
+      { state: 'error', tool: 'Bash', t: 4500 }, { state: 'working', tool: 'Edit', t: 5000 }, { state: 'done', t: 9000 }, { state: 'idle', t: 12000 },
+    ];
+    const project = ['web-app', 'api-server', 'sample-ordering', 'design-system'][(n - 1) % 4];
+    let i = 0;
+    const step = () => {
+      if (i >= script.length) { fakes.delete(id); return push(); }
+      const s = script[i++];
+      fakes.set(id, { id, project, state: s.state, tool: s.tool || null, subagents: s.subagents || 0 });
+      push(); setTimeout(step, s.t);
+    };
+    step();
+  }
+  function push() { syncSessions([...fakes.values()]); }
+}
+
+</script>
+</body>
+</html>

@@ -1,0 +1,29 @@
+{
+  "name": "doomlet",
+  "version": "1.4.0",
+  "description": "A tiny team of sleep-deprived pixel bunnies that lives on your desktop and reacts to your Claude Code sessions",
+  "main": "main.js",
+  "private": true,
+  "scripts": {
+    "start": "electron .",
+    "install-hooks": "node hook/install-hooks.js",
+    "uninstall-hooks": "node hook/install-hooks.js --uninstall"
+  },
+  "devDependencies": {
+    "electron": "^33.0.0"
+  },
+  "license": "MIT",
+  "author": "kenzot25",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/kenzot25/doomlet.git"
+  },
+  "keywords": [
+    "desktop-pet",
+    "electron",
+    "pixel-art",
+    "claude-code",
+    "tamagotchi",
+    "overlay"
+  ]
+}
