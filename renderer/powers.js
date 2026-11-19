@@ -18,16 +18,7 @@ Object.assign(EMOJI, {
   aimRope: ['🪝', '🎯'], swinging: ['🪝', '🤸', '😆', '🌬️'], fly: ['🚀', '😎', '✈️', '🛩️'], fuelOut: ['⛽', '😱'],
   giant: ['💢', '😤', '👊', '🌋'], giantWalk: ['💢', '👣'], carry: ['😈', '💪'], carried: ['😱', '🙀', '🆘'], deflate: ['😳', '🫣', '🎈'],
 });
-Object.assign(LINES, {
-  swing: ['đu thôi!', 'ai cần thang máy.', 'bám chắc vào…', 'giờ này đi bộ là lạc hậu.'],
-  fly: ['cất cánh!', 'tầm nhìn đẹp. đời vẫn xấu.', 'xăng đắt quá.', 'trên này không có Slack.'],
-  fuelOut: ['hết xăng!!', 'quên đổ xăng…', 'đáng lẽ phải sạc pin…'],
-  puff: ['TUI. ĐANG. RẤT. BÌNH. TĨNH.', 'ĐỪNG CHỌC NỮA!', 'AI. LÀM. VỠ. BUILD?'],
-  deflate: ['…xin lỗi. tui hơi quá.', 'xì hơi rồi. ngại ghê.', 'tui không nhớ gì hết.'],
-  grabbed: ['THẢ TUI RA!', 'ơ ơ ơ', 'tui nhẹ lắm, đừng ném!'],
-  bomb: ['bánh mì giao tận nơi!', 'ăn sáng chưa?', 'bữa sáng từ trên trời!'],
-});
-const HERO_NAMES = { hook: ['Móc', 'Đu Dây'], jet: ['Phản Lực', 'Bay Cao'], puff: ['Bánh Bao', 'Phồng'] };
+// Thoại siêu năng lực (swing/fly/puff…) và HERO_NAMES đã chuyển vào lines.js để dịch đa ngôn ngữ.
 const HERO_FREE = { hook: { swing: 3.2 }, jet: { fly: 3.2 }, puff: { puffUp: 0.15 } };
 const POWER_MOVES = { swing: 'swing', fly: 'startFly', puffUp: 'puffUp' };
 const GIANT = 2.6;

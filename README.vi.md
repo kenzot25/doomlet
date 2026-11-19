@@ -2,7 +2,9 @@
 
 > 🇬🇧 English: [README.md](README.md)
 
-Một bầy thỏ pixel chán đời sống ở đáy màn hình, tự lẩm bẩm tiếng Việt và chạy theo các phiên Claude Code bạn đang mở.
+Một bầy thỏ pixel chán đời sống ở đáy màn hình, tự lẩm bẩm (tiếng Việt hoặc tiếng Anh) và chạy theo các phiên Claude Code bạn đang mở.
+
+**Xem thử ngay:** [bản demo chạy trên trình duyệt](https://kenzot25.github.io/doomlet/demo.html) — không cần tải về.
 
 ## Cài và chạy
 
@@ -12,6 +14,8 @@ Cần Node.js 18 trở lên.
 - macOS/Linux: `npm install` rồi `npm start`.
 
 App chỉ sống trên khay hệ thống, không có cửa sổ hay icon trên taskbar. Lần chạy đầu tiên nó tự đăng ký khởi động cùng máy. Muốn tắt thì bỏ tick "Khởi động cùng máy" trong menu khay.
+
+Trong menu khay còn có: **Kích thước nhân vật** (Nhỏ / Vừa / Lớn / Siêu lớn) và **Ngôn ngữ / Language** (Tiếng Việt / English) — đổi lúc nào cũng được.
 
 ## Nhiều màn hình
 
@@ -93,6 +97,28 @@ Hook chỉ ghi một dòng vào `~/.doomlet/events.jsonl`, luôn thoát ngay và
 - `renderer/lines.js`: toàn bộ câu thoại, cứ sửa thoải mái.
 - `renderer/sprites.js`: sprite 16×16 vẽ bằng ký tự. Mỗi chữ là một màu trong `pal`, dấu `.` là trong suốt.
 - `renderer/pet.js`: danh sách hành động (`ACT`) và tần suất tự làm (`FREE`).
+
+## Góp ngôn ngữ — rất cần bạn giúp!
+
+Hiện thỏ nói được **tiếng Việt** và **tiếng Anh**. Rất mong có thêm ngôn ngữ của bạn. 🐰
+
+Thêm một ngôn ngữ chỉ là dịch một file, không cần build:
+
+1. Mở [`renderer/lines.js`](renderer/lines.js), copy nguyên khối `I18N.vi`.
+2. Đổi tên thành mã ngôn ngữ của bạn (vd `I18N.ja`, `I18N.fr`) và đặt `label`.
+3. Dịch từng câu — giữ cái humor "dev mất ngủ", giữ nguyên các chỗ `{tool}` / `{project}`.
+4. Thêm ngôn ngữ vào menu khay trong [`main.js`](main.js) (submenu **Ngôn ngữ / Language**).
+5. Mở PR. 🎉
+
+Không cần dịch sát nghĩa — miễn câu đùa "ăn" trong tiếng của bạn. Dịch thiếu cũng được, phần nào chưa dịch sẽ tự fallback.
+
+## Góp sức
+
+Mọi đóng góp đều hoan nghênh: nhân vật mới, animation, siêu năng lực, fix bug, tối ưu, tài liệu, bản dịch.
+
+- Thấy bug hoặc có ý tưởng? [Mở issue](https://github.com/kenzot25/doomlet/issues).
+- Muốn code? Fork, chạy `npm install && npm start`, rồi gửi PR. Giữ thay đổi gọn và pixel art là tự vẽ.
+- Không code cũng được: star ⭐, báo lỗi, góp ý đều giúp ích.
 
 ## Ghi chú
 

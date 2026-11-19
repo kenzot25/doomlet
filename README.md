@@ -72,6 +72,7 @@ One overlay per display, so mixed DPI and odd layouts just work. Doomlet reads t
 - Tray icon only: no window, no taskbar entry, no console
 - Starts with your computer (toggle in the tray menu)
 - Character size is adjustable from the tray (**Kích thước nhân vật**: Small / Medium / Large / Huge)
+- Bunny speech is available in **English and Tiếng Việt** — switch any time from the tray (**Ngôn ngữ / Language**)
 - Clicks pass through to the apps underneath unless you are pointing at a bunny
 - Hot reload: edit any file in `renderer/` and the bunnies reload; edit `main.js` and the app restarts
 - "Update & restart" in the tray runs `git pull` + `npm install`
@@ -89,7 +90,7 @@ npm start
 
 **Windows:** just double‑click `start-doomlet.cmd`. It installs Electron the first time, then runs in the background.
 
-**Just want a look?** Open [`demo.html`](demo.html) in your browser. It has buttons to summon the team and simulate a Claude Code session.
+**Just want a look?** Try the **[live demo](https://kenzot25.github.io/doomlet/demo.html)** right in your browser — no download needed. It has buttons to summon the team and simulate a Claude Code session. (Or open [`demo.html`](demo.html) locally.)
 
 **Prefer an installer?** Grab the latest Windows build (`Doomlet Setup *.exe` or the portable `.exe`) from [Releases](https://github.com/kenzot25/doomlet/releases).
 
@@ -166,6 +167,31 @@ renderer/
   powers.js    rope pendulum, jetpack steering, giant mode
   app.js       world loop, input, menus, demo mode
 ```
+
+## 🌍 Languages — help wanted!
+
+The bunnies currently speak **English** and **Tiếng Việt**. I'd love for them to be grumpy in *your* language too. 🐰
+
+Adding a language is just translating one file — no build step, no framework:
+
+1. Open [`renderer/lines.js`](renderer/lines.js) and copy the whole `I18N.vi` block.
+2. Rename it to your language code (e.g. `I18N.ja`, `I18N.fr`, `I18N.es`) and set its `label`.
+3. Translate every line — keep the sleep‑deprived‑developer humor, and leave the `{tool}` / `{project}` placeholders intact.
+4. Add your language to the tray menu in [`main.js`](main.js) (the **Ngôn ngữ / Language** submenu).
+5. Open a PR. 🎉
+
+Translations don't need to be literal — make the jokes land in your language. Partial translations are welcome too; untranslated categories simply fall back.
+
+## 🤝 Contributing
+
+Contributions of all kinds are welcome — new characters, animations, superpowers, bug fixes, performance, docs, and translations.
+
+- **Found a bug or have an idea?** [Open an issue](https://github.com/kenzot25/doomlet/issues).
+- **Want to hack on it?** Fork, run `npm install && npm start`, and send a PR. Keep changes focused and the pixel art original.
+- **New character or power?** Sprites live in [`renderer/sprites.js`](renderer/sprites.js), behavior in [`renderer/pet.js`](renderer/pet.js) and [`renderer/powers.js`](renderer/powers.js), scenes in [`renderer/drama.js`](renderer/drama.js). See **How it works** below.
+- **Not a coder?** Stars ⭐, bug reports, and ideas help a lot.
+
+If you're unsure where to start, open an issue and say hi.
 
 ## ☕ Support
 

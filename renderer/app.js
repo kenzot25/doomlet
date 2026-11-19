@@ -303,7 +303,7 @@ function travelAll() {
   }, i * 300));
 }
 if (API) {
-  API.onLayout((l) => { world.others = l.others || []; world.origin = l.origin; world.primary = l.primary; if (l.size) world.setSize(l.size); });
+  API.onLayout((l) => { world.others = l.others || []; world.origin = l.origin; world.primary = l.primary; if (l.lang) applyLang(l.lang); if (l.size) world.setSize(l.size); });
   API.onArrive(arrive);
   API.onSessions(syncSessions);
   API.onCommand((c) => ({ spawn, team: () => spawnTeam(6), team2: () => spawnTeam(2), heroes: spawnHeroes, dismiss: dismissTeam, travel: travelAll }[c]?.()));
