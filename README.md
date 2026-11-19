@@ -71,6 +71,7 @@ One overlay per display, so mixed DPI and odd layouts just work. Doomlet reads t
 
 - Tray icon only: no window, no taskbar entry, no console
 - Starts with your computer (toggle in the tray menu)
+- Character size is adjustable from the tray (**Kích thước nhân vật**: Small / Medium / Large / Huge)
 - Clicks pass through to the apps underneath unless you are pointing at a bunny
 - Hot reload: edit any file in `renderer/` and the bunnies reload; edit `main.js` and the app restarts
 - "Update & restart" in the tray runs `git pull` + `npm install`
@@ -89,6 +90,23 @@ npm start
 **Windows:** just double‑click `start-doomlet.cmd`. It installs Electron the first time, then runs in the background.
 
 **Just want a look?** Open [`demo.html`](demo.html) in your browser. It has buttons to summon the team and simulate a Claude Code session.
+
+**Prefer an installer?** Grab the latest Windows build (`Doomlet Setup *.exe` or the portable `.exe`) from [Releases](https://github.com/kenzot25/doomlet/releases).
+
+## 📦 Build a Windows release
+
+```bash
+npm install
+npm run dist          # build locally → dist/ (NSIS installer + portable .exe)
+```
+
+Publishing is automated: push a version tag and GitHub Actions ([`.github/workflows/release.yml`](.github/workflows/release.yml)) builds on `windows-latest` and attaches the artifacts to the matching GitHub Release.
+
+```bash
+# bump "version" in package.json first (e.g. 1.5.0), then:
+git tag v1.5.0
+git push origin v1.5.0
+```
 
 ## 🤖 Claude Code integration
 

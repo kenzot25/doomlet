@@ -162,6 +162,16 @@ class Pet {
     } else this.do('fall');
   }
 
+  // đổi cỡ nhân vật lúc đang chạy; giữ chân đứng đúng mặt đất (scale nguyên để pixel không bị nhoè)
+  setScale(s) {
+    if (!s || s === this.scale) return;
+    this.scale = s;
+    this.canvas.style.width = SPR_W * s + 'px';
+    this.canvas.style.height = SPR_H * s + 'px';
+    this.w = SPR_W * s; this.h = SPR_H * s;
+    this.footY = (OY + 16) * s;
+  }
+
   // bị hất văng (trúng đạn, thua đánh nhau, bị ném trúng)
   knock(dir, power = 1, after = 'faint') {
     clearTimeout(this._lt);

@@ -3,7 +3,14 @@ const API = window.doomlet || null; // có khi chạy trong Electron
 const MAX_PETS = 16;
 const world = {
   layer: document.getElementById('world'), pets: new Set(), W: innerWidth, H: innerHeight,
-  others: [], origin: { x: 0, y: 0 }, primary: true, demoWrap: false,
+  others: [], origin: { x: 0, y: 0 }, primary: true, demoWrap: false, sizeScale: 4,
+};
+// Đổi cỡ cả team; thỏ con (subagent) nhỏ hơn thỏ chính 1 bậc như lúc spawn
+world.helperScale = (base = world.sizeScale) => Math.max(2, base - 1);
+world.setSize = (base) => {
+  if (!base) return;
+  world.sizeScale = base;
+  for (const p of world.pets) p.setScale(p.owner ? world.helperScale(base) : base);
 };
 // Bản đồ các màn khác (toạ độ theo màn này)
 const inRect = (r, x, y, pad = 0) => x >= r.x - pad && x <= r.x + r.w + pad && y >= r.y - pad && y <= r.y + r.h + pad;
@@ -99,7 +106,7 @@ function spawn(o = {}) {
   const type = o.type || TYPES[typeCursor++ % TYPES.length];
   const hoodie = o.hoodie || (type === 'insomnia' && !o.owner && world.pets.size === 0 ? null : HOODIES[hoodieCursor++ % HOODIES.length]);
   const name = o.name || (HERO_NAMES[type] ? (HERO_NAMES[type].find((n) => !usedNames().has(n)) || pick(HERO_NAMES[type])) : null) || (type === 'sage' ? (SAGE_NAMES.find((n) => !usedNames().has(n)) || pick(SAGE_NAMES)) : freshName());
-  const p = new Pet(world, { ...o, type, hoodie, name, label: o.label || name });
+  const p = new Pet(world, { ...o, type, hoodie, name, label: o.label || name, scale: o.scale ?? world.sizeScale });
   world.pets.add(p);
   return p;
 }
@@ -280,7 +287,7 @@ function syncSessions(list) {
     const want = Math.min(s.subagents || 0, 4);
     for (let i = helpers.length; i < want; i++) {
       const off = (i % 2 ? 1 : -1) * (55 + Math.floor(i / 2) * 45);
-      const h = spawn({ owner: p, offset: off, scale: 3, x: p.x + off, label: 'sub ' + (i + 1) });
+      const h = spawn({ owner: p, offset: off, scale: world.helperScale(), x: p.x + off, label: 'sub ' + (i + 1) });
       if (h) h.setTag();
     }
     helpers.slice(want).forEach((h) => h.leave());
@@ -296,7 +303,7 @@ function travelAll() {
   }, i * 300));
 }
 if (API) {
-  API.onLayout((l) => { world.others = l.others || []; world.origin = l.origin; world.primary = l.primary; });
+  API.onLayout((l) => { world.others = l.others || []; world.origin = l.origin; world.primary = l.primary; if (l.size) world.setSize(l.size); });
   API.onArrive(arrive);
   API.onSessions(syncSessions);
   API.onCommand((c) => ({ spawn, team: () => spawnTeam(6), team2: () => spawnTeam(2), heroes: spawnHeroes, dismiss: dismissTeam, travel: travelAll }[c]?.()));

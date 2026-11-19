@@ -7,7 +7,7 @@ const { startWindowRects } = require('./winrects');
 
 // ---- cài đặt lưu lại giữa các lần chạy ----
 const settingsFile = () => path.join(app.getPath('userData'), 'settings.json');
-let settings = { autoStart: true, link: true };
+let settings = { autoStart: true, link: true, size: 4 };
 function loadSettings() { try { settings = { ...settings, ...JSON.parse(fs.readFileSync(settingsFile(), 'utf8')) }; } catch { /* lần đầu */ } }
 function saveSettings() { try { fs.mkdirSync(path.dirname(settingsFile()), { recursive: true }); fs.writeFileSync(settingsFile(), JSON.stringify(settings, null, 2)); } catch { /* bỏ qua */ } }
 
@@ -30,6 +30,9 @@ function log(...a) {
 }
 
 function notify(body) { try { new Notification({ title: 'Doomlet', body }).show(); } catch { /* bỏ qua */ } }
+
+// Đổi cỡ nhân vật: lưu lại rồi gửi layout mới cho mọi màn để renderer scale cả team
+function setSize(size) { settings.size = size; saveSettings(); wins.forEach((w) => sendLayout(w)); }
 
 // ---- cập nhật: git pull + npm install rồi khởi động lại ----
 function runUpdate() {
@@ -117,6 +120,7 @@ function sendLayout(w) {
   }));
   w.win.webContents.send('layout', {
     id: w.display.id, origin: { x: wa.x, y: wa.y }, others, primary: w.display.id === screen.getPrimaryDisplay().id,
+    size: settings.size,
   });
 }
 
@@ -211,6 +215,15 @@ function buildTray() {
     { type: 'separator' },
     { label: 'Theo dõi Claude Code', type: 'checkbox', checked: link, click: (i) => { link = settings.link = i.checked; saveSettings(); push(); } },
     { label: 'Khởi động cùng máy', type: 'checkbox', checked: settings.autoStart, click: (i) => { settings.autoStart = i.checked; saveSettings(); applyAutoStart(); } },
+    {
+      label: 'Kích thước nhân vật',
+      submenu: [
+        { label: 'Nhỏ', type: 'radio', checked: settings.size === 3, click: () => setSize(3) },
+        { label: 'Vừa (mặc định)', type: 'radio', checked: settings.size === 4, click: () => setSize(4) },
+        { label: 'Lớn', type: 'radio', checked: settings.size === 5, click: () => setSize(5) },
+        { label: 'Siêu lớn', type: 'radio', checked: settings.size === 6, click: () => setSize(6) },
+      ],
+    },
     { type: 'separator' },
     { label: 'Cập nhật & khởi động lại', click: runUpdate },
     { label: 'Mở thư mục app', click: () => shell.openPath(app.getAppPath()) },

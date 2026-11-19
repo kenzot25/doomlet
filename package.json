@@ -7,10 +7,13 @@
   "scripts": {
     "start": "electron .",
     "install-hooks": "node hook/install-hooks.js",
-    "uninstall-hooks": "node hook/install-hooks.js --uninstall"
+    "uninstall-hooks": "node hook/install-hooks.js --uninstall",
+    "dist": "electron-builder --win",
+    "dist:publish": "electron-builder --win --publish always"
   },
   "devDependencies": {
-    "electron": "^33.0.0"
+    "electron": "^33.0.0",
+    "electron-builder": "^25.1.8"
   },
   "license": "MIT",
   "author": "kenzot25",
@@ -25,5 +28,34 @@
     "claude-code",
     "tamagotchi",
     "overlay"
-  ]
+  ],
+  "build": {
+    "appId": "com.kenzot25.doomlet",
+    "productName": "Doomlet",
+    "files": [
+      "**/*",
+      "!**/*.log",
+      "!docs/**",
+      "!dist/**",
+      "!.github/**",
+      "!README*.md"
+    ],
+    "win": {
+      "target": [
+        { "target": "nsis", "arch": ["x64"] },
+        { "target": "portable", "arch": ["x64"] }
+      ],
+      "icon": "assets/icon.png"
+    },
+    "nsis": {
+      "oneClick": false,
+      "perMachine": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "shortcutName": "Doomlet"
+    },
+    "publish": [
+      { "provider": "github", "owner": "kenzot25", "repo": "doomlet" }
+    ]
+  }
 }
