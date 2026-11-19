@@ -328,6 +328,8 @@ function startDemo() {
     if (a === 'dismiss') dismissTeam();
     if (a === 'session') fakeSession(++fakeN);
     if (a === 'travel') travelAll();
+    if (a === 'lang') { applyLang(LANG === 'vi' ? 'en' : 'vi'); e.target.textContent = '🌐 ' + I18N[LANG].label; }
+    if (a === 'size') { const o = [3, 4, 5, 6]; world.setSize(o[(o.indexOf(world.sizeScale) + 1) % o.length]); e.target.textContent = '🔎 Size ' + world.sizeScale; }
   });
   const fakes = new Map();
   function fakeSession(n) {
